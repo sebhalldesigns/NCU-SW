@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cmake",
+			"label": "CMake: configure",
+			"command": "configure",
+			"preset": "Debug",
+			"problemMatcher": [],
+			"detail": "CMake template configure task"
+		},
+		{
+            "label": "flash-stm32-cubeprog",
+            "type": "shell",
+            "command": "C:\\ST\\STM32CubeIDE_2.1.1\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.400.202601091506\\tools\\bin\\STM32_Programmer_CLI.exe",
+            "args": [
+                "-c",
+                "port=swd",
+                "-d",
+                "${command:cmake.launchTargetPath}", // Takes the path of the compiled binary
+                "-v", // Verify after programming
+                "-rst" // Reset the board to start the code
+            ],
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared",
+				"close": true
+			},
+            "dependsOn": "CMake: build", // <--- This forces COMPILATION before flashing
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+
+        }
+	]
+}

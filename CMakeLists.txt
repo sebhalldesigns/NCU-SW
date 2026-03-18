@@ -33,6 +33,53 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+set(LWIP_DIR ${CMAKE_SOURCE_DIR}/extern/lwip)
+
+# Only the source files we actually need
+set(LWIP_SOURCES
+    # Core
+    ${LWIP_DIR}/src/core/init.c
+    ${LWIP_DIR}/src/core/def.c
+    ${LWIP_DIR}/src/core/mem.c
+    ${LWIP_DIR}/src/core/memp.c
+    ${LWIP_DIR}/src/core/netif.c
+    ${LWIP_DIR}/src/core/pbuf.c
+    ${LWIP_DIR}/src/core/stats.c
+    ${LWIP_DIR}/src/core/sys.c
+    ${LWIP_DIR}/src/core/timeouts.c
+    ${LWIP_DIR}/src/core/inet_chksum.c
+
+    # TCP/IP
+    ${LWIP_DIR}/src/core/tcp.c
+    ${LWIP_DIR}/src/core/tcp_in.c
+    ${LWIP_DIR}/src/core/tcp_out.c
+    ${LWIP_DIR}/src/core/udp.c
+    ${LWIP_DIR}/src/core/ip.c
+    ${LWIP_DIR}/src/core/raw.c
+
+    # IPv4
+    ${LWIP_DIR}/src/core/ipv4/autoip.c
+    ${LWIP_DIR}/src/core/ipv4/dhcp.c
+    ${LWIP_DIR}/src/core/ipv4/etharp.c
+    ${LWIP_DIR}/src/core/ipv4/icmp.c
+    ${LWIP_DIR}/src/core/ipv4/igmp.c
+    ${LWIP_DIR}/src/core/ipv4/ip4.c
+    ${LWIP_DIR}/src/core/ipv4/ip4_addr.c
+    ${LWIP_DIR}/src/core/ipv4/ip4_frag.c
+
+    # Network interfaces
+    ${LWIP_DIR}/src/netif/ethernet.c
+
+    # Your port
+    ${CMAKE_SOURCE_DIR}/src/m7/lwip_port/src/ethernetif.c
+)
+
+set(LWIP_INCLUDES
+    ${LWIP_DIR}/src/include
+    ${CMAKE_SOURCE_DIR}/src/m7/lwip_port/include
+    ${CMAKE_SOURCE_DIR}/src/common   # picks up your lwipopts.h
+)
+
 # Core MCU flags, CPU type, instruction set and FPU setup
 set(cpu_PARAMS 
     # Other parameters
@@ -42,7 +89,8 @@ set(cpu_PARAMS
 
 # Sources
 set(sources_SRCS
-	${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
+	${CMAKE_CURRENT_SOURCE_DIR}/src/m7/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/m7/uart/uart.c
 )
 
 # Include directories for all compilers
@@ -91,11 +139,12 @@ link_directories(${CMAKE_PROJECT_NAME} ${link_DIRS})
 add_executable(${CMAKE_PROJECT_NAME})
 
 # Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PUBLIC ${sources_SRCS})
+target_sources(${CMAKE_PROJECT_NAME} PUBLIC ${sources_SRCS} ${LWIP_SOURCES})
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${include_DIRS}
+    ${LWIP_INCLUDES}
     $<$<COMPILE_LANGUAGE:C>: ${include_c_DIRS}>
     $<$<COMPILE_LANGUAGE:CXX>: ${include_cxx_DIRS}>
     $<$<COMPILE_LANGUAGE:ASM>: ${include_asm_DIRS}>

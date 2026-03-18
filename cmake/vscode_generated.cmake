@@ -22,14 +22,15 @@ set(cpu_PARAMS ${CPU_FLAGS} ${cpu_PARAMS})
 
 # Linker script
 set(linker_script_SRC ${linker_script_SRC}
-	${CMAKE_CURRENT_SOURCE_DIR}/stm32h755xi_flash_cm7.ld
+	${CMAKE_CURRENT_SOURCE_DIR}/src/m7/stm32h755xi_flash_cm7.ld
 )
 
 # Sources
 set(sources_SRCS ${sources_SRCS}
-	${CMAKE_CURRENT_SOURCE_DIR}/src/syscall.c
-	${CMAKE_CURRENT_SOURCE_DIR}/src/sysmem.c
-	${CMAKE_CURRENT_SOURCE_DIR}/src/startup_stm32h755xx_CM7.S
+	${CMAKE_CURRENT_SOURCE_DIR}/src/m7/syscall.c
+	${CMAKE_CURRENT_SOURCE_DIR}/src/m7/sysmem.c
+	${CMAKE_CURRENT_SOURCE_DIR}/src/m7/startup_stm32h755xx_CM7.S
+	#${CMAKE_CURRENT_SOURCE_DIR}/src/startup_stm32h755xx_CM4.S
 )
 
 # Include directories

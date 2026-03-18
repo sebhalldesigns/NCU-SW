@@ -4,6 +4,10 @@
 #define CORE_CM7
 #include <stm32h7xx.h>
 
+#include "uart/uart.h"
+
+#include <stdio.h>
+
 volatile uint8_t led_state = 0;
 
 void TIM2_IRQHandler(void)
@@ -28,6 +32,8 @@ int main(void)
 {
     RCC->APB1LENR |= RCC_APB1LENR_TIM2EN; /* enable TIM2 clock */
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOEEN; /* enable GPIO clock */
+
+    UART3_Init();
     
     __DSB(); /* ensure that the clock is enabled before accessing GPIO registers */
 
@@ -58,9 +64,15 @@ int main(void)
 
     TIM2->CR1  |= TIM_CR1_CEN;   /* start the timer */
 
+    printf("Hello, world!\n");
+
+    int i = 0;
+
     while (1)
     {
         //__WFI(); /* wait for interrupt */
+        printf("Hello, world!\n");
+        i++;
 
     }
 }

@@ -29,7 +29,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/times.h>
-
+#include "uart/uart.h"
 
 /* Variables */
 extern int __io_putchar(int ch) __attribute__((weak));
@@ -79,6 +79,7 @@ __attribute__((weak)) int _read(int file, char *ptr, int len)
 
 __attribute__((weak)) int _write(int file, char *ptr, int len)
 {
+  /*
   (void)file;
   int DataIdx;
 
@@ -87,6 +88,16 @@ __attribute__((weak)) int _write(int file, char *ptr, int len)
     __io_putchar(*ptr++);
   }
   return len;
+  */
+  (void)file;
+    for (int i = 0; i < len; i++) {
+        /* Convert \n to \r\n for terminal compatibility */
+        if (ptr[i] == '\n') {
+            UART3_SendChar('\r');
+        }
+        UART3_SendChar(ptr[i]);
+    }
+    return len;
 }
 
 int _close(int file)

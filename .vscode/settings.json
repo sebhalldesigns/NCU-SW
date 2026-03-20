@@ -14,8 +14,16 @@
     ],
     "VsCodeTaskButtons.tasks": [
     {
-      "label": "$(play) Build and Run",
-      "task": "flash-stm32-cubeprog",
+      "label": "$(play) Flash M7",
+      "task": "flash-m7",
+    },
+    {
+      "label": "$(play) Flash M4",
+      "task": "flash-m4",
+    },
+    {
+      "label": "$(play) Flash All",
+      "task": "flash-all",
     }
   ]
 }

@@ -1,2 +1,4 @@
 build
 !.settings
+*.slxc
+*_ert_rtw/

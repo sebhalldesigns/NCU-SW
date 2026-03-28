@@ -219,4 +219,11 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+
+  .eth_dma (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.eth_dma*)
+    . = ALIGN(4);
+  } >RAM_D2
 }

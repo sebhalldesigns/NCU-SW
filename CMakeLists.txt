@@ -13,3 +13,4 @@ set(CMAKE_CXX_EXTENSIONS ON)
 
 add_subdirectory(m7)
 add_subdirectory(m4)
+add_subdirectory(extern)

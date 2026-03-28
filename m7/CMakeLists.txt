@@ -4,9 +4,12 @@ set(DEFINES
     STM32H755xx
     CORE_CM7
 )
-
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
+    
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sys/sys.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/eth/eth.c
+
     ${CMAKE_CURRENT_SOURCE_DIR}/src/syscall.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sysmem.c
     ${CMAKE_CURRENT_SOURCE_DIR}/sld/startup_stm32h755xx_cm7.s
@@ -19,6 +22,8 @@ set(INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/CMSIS/device/ST/STM32H7xx/include/
 )
 
+set(LWIP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../extern/lwip)
+
 set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/sld/stm32h755xi_flash_cm7.ld)
 
 set(CPU_PARAMS
@@ -29,6 +34,8 @@ set(CPU_PARAMS
 )
 
 add_executable(${TARGET_NAME} ${SOURCES})
+
+target_link_libraries(${TARGET_NAME} PRIVATE lwip)
 
 target_include_directories(${TARGET_NAME} PRIVATE ${INCLUDES})
 

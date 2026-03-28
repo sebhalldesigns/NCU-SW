@@ -35,16 +35,15 @@
 #define LWIP_ARP                    1
 #define ETH_PAD_SIZE                0
 
-/* ---- Checksum: let hardware do it where possible ---- */
-#define CHECKSUM_BY_HARDWARE        1
-#ifdef CHECKSUM_BY_HARDWARE
-  #define CHECKSUM_GEN_IP           0
-  #define CHECKSUM_GEN_UDP          0
-  #define CHECKSUM_GEN_TCP          0
-  #define CHECKSUM_CHECK_IP         0
-  #define CHECKSUM_CHECK_UDP        0
-  #define CHECKSUM_CHECK_TCP        0
-#endif
+/* Checksum offload to ETH MAC hardware */
+#define CHECKSUM_GEN_IP             0
+#define CHECKSUM_GEN_UDP            0
+#define CHECKSUM_GEN_TCP            0
+#define CHECKSUM_GEN_ICMP           0
+#define CHECKSUM_CHECK_IP           0
+#define CHECKSUM_CHECK_UDP          0
+#define CHECKSUM_CHECK_TCP          0
+#define CHECKSUM_CHECK_ICMP         0
 
 /* ---- Stats (disable for production, useful for debug) ---- */
 #define LWIP_STATS                  0
@@ -55,5 +54,10 @@
 /* Disable Sequential/netconn API - not needed in NO_SYS mode */
 #define LWIP_NETCONN                0
 #define LWIP_SOCKET                 0
+
+#define LWIP_ETHERNET               1
+#define LWIP_ARP                    1
+#define MEMP_NUM_PBUF               16
+#define PBUF_POOL_BUFSIZE           1524  /* must be > max frame size */
 
 #endif /* LWIPOPTS_H */

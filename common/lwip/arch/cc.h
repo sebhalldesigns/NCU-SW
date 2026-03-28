@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <cmsis_compiler.h>
 
 /* Data types lwIP expects */
 typedef uint8_t     u8_t;
@@ -30,10 +31,8 @@ typedef uintptr_t   mem_ptr_t;
 /* Critical sections - we'll use simple interrupt disable for now */
 #define LWIP_PLATFORM_DIAG(x) do { printf x; } while(0)
 
-extern void sys_arch_protect(void);
-extern void sys_arch_unprotect(void);
-#define SYS_ARCH_PROTECT(lev)    sys_arch_protect()
-#define SYS_ARCH_UNPROTECT(lev)  sys_arch_unprotect()
-#define SYS_ARCH_DECL_PROTECT(lev)
+#define SYS_ARCH_DECL_PROTECT(lev)   uint32_t lev
+#define SYS_ARCH_PROTECT(lev)        do { lev = __get_PRIMASK(); __disable_irq(); } while(0)
+#define SYS_ARCH_UNPROTECT(lev)      do { __set_PRIMASK(lev); } while(0)
 
 #endif /* LWIP_ARCH_CC_H */

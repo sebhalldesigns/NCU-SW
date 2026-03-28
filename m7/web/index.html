@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link href="https://iosevka-webfonts.github.io/iosevka/Iosevka.css" rel="stylesheet" />
+  <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
@@ -69,7 +70,31 @@
           </div>
         </div>
       </section>
-      <section class="view" data-page="telemetry" aria-label="Telemetry"></section>
+      <section class="view" data-page="telemetry" aria-label="Telemetry">
+        <div class="telemetry">
+          <aside class="telemetry-sidebar">
+            <header class="telemetry-header">
+              <h1 class="telemetry-title">Telemetry</h1>
+              <p class="telemetry-subtitle">Select channels to plot in real time.</p>
+            </header>
+            <div class="telemetry-controls">
+              <button id="telemetry-select-all" class="telemetry-btn" type="button">All</button>
+              <button id="telemetry-select-none" class="telemetry-btn" type="button">None</button>
+              <button id="telemetry-clear" class="telemetry-btn" type="button">Clear</button>
+            </div>
+            <div id="telemetry-channel-list" class="telemetry-channel-list" role="listbox"
+              aria-label="Telemetry channel list"></div>
+          </aside>
+
+          <section class="telemetry-chart-panel">
+            <div class="telemetry-chart-toolbar">
+              <span id="telemetry-sample-count" class="telemetry-sample-count">0 samples</span>
+              <span class="telemetry-hint">Scroll to zoom, drag to pan</span>
+            </div>
+            <div id="telemetry-chart" class="telemetry-chart" aria-label="Telemetry chart area"></div>
+          </section>
+        </div>
+      </section>
       <section class="view" data-page="calibration" aria-label="Calibration"></section>
       <section class="view" data-page="configuration" aria-label="Configuration"></section>
     </main>
@@ -93,6 +118,22 @@
       var homeMapCaption = document.getElementById("home-map-caption");
       var homeMap = null;
       var homeMapMarker = null;
+      var telemetryChannelList = document.getElementById("telemetry-channel-list");
+      var telemetryChartElement = document.getElementById("telemetry-chart");
+      var telemetrySampleCount = document.getElementById("telemetry-sample-count");
+      var telemetrySelectAllButton = document.getElementById("telemetry-select-all");
+      var telemetrySelectNoneButton = document.getElementById("telemetry-select-none");
+      var telemetryClearButton = document.getElementById("telemetry-clear");
+      var telemetryState = {
+        chart: null,
+        channels: [],
+        selected: new Set(),
+        samplesById: {},
+        latestById: {},
+        maxPoints: 900,
+        demoTimer: null,
+        externalFeedSeen: false
+      };
       var homeFieldMap = {
         version: document.getElementById("home-version"),
         apiVersion: document.getElementById("home-api-version"),
@@ -221,6 +262,385 @@
         }
       }
 
+      function makeDefaultTelemetryChannels() {
+        return [
+          { id: "motor_rpm", label: "Motor RPM", unit: "rpm", color: "#45b6ff" },
+          { id: "pack_voltage", label: "Pack Voltage", unit: "V", color: "#39d98a" },
+          { id: "pack_current", label: "Pack Current", unit: "A", color: "#f5bf4a" },
+          { id: "inverter_temp", label: "Inverter Temp", unit: "C", color: "#ff6b6b" },
+          { id: "mcu_temp", label: "MCU Temp", unit: "C", color: "#b48eff" },
+          { id: "gps_speed", label: "GPS Speed", unit: "km/h", color: "#8ed6ff" },
+          { id: "steering_angle", label: "Steering Angle", unit: "deg", color: "#ffd280" },
+          { id: "brake_pressure", label: "Brake Pressure", unit: "bar", color: "#6de3c8" }
+        ];
+      }
+
+      function normalizeTelemetryChannel(channel, index) {
+        var palette = ["#45b6ff", "#39d98a", "#f5bf4a", "#ff6b6b", "#b48eff", "#8ed6ff", "#ffd280", "#6de3c8"];
+        var fallbackId = "ch_" + String(index + 1);
+        return {
+          id: channel && channel.id ? String(channel.id) : fallbackId,
+          label: channel && channel.label ? String(channel.label) : fallbackId,
+          unit: channel && channel.unit ? String(channel.unit) : "",
+          color: channel && channel.color ? String(channel.color) : palette[index % palette.length]
+        };
+      }
+
+      function telemetryFindChannel(channelId) {
+        var found = null;
+        telemetryState.channels.forEach(function (channel) {
+          if (channel.id === channelId) {
+            found = channel;
+          }
+        });
+        return found;
+      }
+
+      function telemetryFormatValue(channel, value) {
+        var abs = Math.abs(value);
+        var decimals = abs >= 1000 ? 0 : abs >= 100 ? 1 : 2;
+        var suffix = channel && channel.unit ? " " + channel.unit : "";
+        return value.toFixed(decimals) + suffix;
+      }
+
+      function telemetrySampleLength() {
+        var maxLength = 0;
+        telemetryState.channels.forEach(function (channel) {
+          var channelSamples = telemetryState.samplesById[channel.id] || [];
+          if (channelSamples.length > maxLength) {
+            maxLength = channelSamples.length;
+          }
+        });
+        return maxLength;
+      }
+
+      function updateTelemetrySampleCount() {
+        if (!telemetrySampleCount) {
+          return;
+        }
+        var count = telemetrySampleLength();
+        telemetrySampleCount.textContent = String(count) + (count === 1 ? " sample" : " samples");
+      }
+
+      function updateTelemetryLatestValues() {
+        if (!telemetryChannelList) {
+          return;
+        }
+
+        var valueNodes = telemetryChannelList.querySelectorAll("[data-channel-value]");
+        Array.prototype.forEach.call(valueNodes, function (node) {
+          var channelId = node.getAttribute("data-channel-value");
+          var latest = telemetryState.latestById[channelId];
+          var channel = telemetryFindChannel(channelId);
+
+          if (!Number.isFinite(latest)) {
+            node.textContent = "--";
+            return;
+          }
+
+          node.textContent = telemetryFormatValue(channel, latest);
+        });
+      }
+
+      function renderTelemetryChannelList() {
+        if (!telemetryChannelList) {
+          return;
+        }
+
+        telemetryChannelList.innerHTML = "";
+
+        telemetryState.channels.forEach(function (channel) {
+          var row = document.createElement("label");
+          row.className = "telemetry-channel";
+
+          var input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = telemetryState.selected.has(channel.id);
+          input.setAttribute("data-channel-id", channel.id);
+
+          input.addEventListener("change", function () {
+            if (input.checked) {
+              telemetryState.selected.add(channel.id);
+            } else {
+              telemetryState.selected.delete(channel.id);
+            }
+            refreshTelemetryChart();
+          });
+
+          var colorSwatch = document.createElement("span");
+          colorSwatch.className = "telemetry-channel-swatch";
+          colorSwatch.style.backgroundColor = channel.color;
+
+          var name = document.createElement("span");
+          name.className = "telemetry-channel-name";
+          name.textContent = channel.label;
+
+          var value = document.createElement("span");
+          value.className = "telemetry-channel-value";
+          value.setAttribute("data-channel-value", channel.id);
+          value.textContent = "--";
+
+          row.appendChild(input);
+          row.appendChild(colorSwatch);
+          row.appendChild(name);
+          row.appendChild(value);
+          telemetryChannelList.appendChild(row);
+        });
+
+        updateTelemetryLatestValues();
+      }
+
+      function setTelemetryChannels(channels) {
+        var source = Array.isArray(channels) && channels.length > 0 ? channels : makeDefaultTelemetryChannels();
+
+        telemetryState.channels = source.map(normalizeTelemetryChannel);
+        telemetryState.selected = new Set();
+        telemetryState.samplesById = {};
+        telemetryState.latestById = {};
+
+        telemetryState.channels.forEach(function (channel) {
+          telemetryState.selected.add(channel.id);
+          telemetryState.samplesById[channel.id] = [];
+          telemetryState.latestById[channel.id] = null;
+        });
+
+        renderTelemetryChannelList();
+        refreshTelemetryChart();
+      }
+
+      function ensureTelemetryChart(force) {
+        if (!telemetryChartElement || !window.echarts) {
+          return false;
+        }
+
+        if (!force && (telemetryChartElement.clientWidth === 0 || telemetryChartElement.clientHeight === 0)) {
+          return false;
+        }
+
+        if (!telemetryState.chart) {
+          telemetryState.chart = window.echarts.init(telemetryChartElement, null, { renderer: "canvas" });
+          telemetryState.chart.setOption({
+            animation: false,
+            grid: { left: 58, right: 20, top: 20, bottom: 58 },
+            textStyle: { color: "#d9e3f0", fontFamily: "Iosevka Web, Iosevka, Consolas, monospace" },
+            tooltip: {
+              trigger: "axis",
+              axisPointer: { type: "cross" },
+              backgroundColor: "rgba(9, 13, 21, .95)",
+              borderColor: "rgba(217, 227, 240, .2)",
+              textStyle: { color: "#d9e3f0", fontFamily: "Iosevka Web, Iosevka, Consolas, monospace" }
+            },
+            xAxis: {
+              type: "time",
+              axisLine: { lineStyle: { color: "rgba(217, 227, 240, .35)" } },
+              axisLabel: { color: "#95a3b5" },
+              splitLine: { lineStyle: { color: "rgba(217, 227, 240, .09)" } }
+            },
+            yAxis: {
+              type: "value",
+              scale: true,
+              axisLine: { lineStyle: { color: "rgba(217, 227, 240, .35)" } },
+              axisLabel: { color: "#95a3b5" },
+              splitLine: { lineStyle: { color: "rgba(217, 227, 240, .09)" } }
+            },
+            dataZoom: [
+              { type: "inside", filterMode: "none" },
+              {
+                type: "slider",
+                filterMode: "none",
+                height: 24,
+                bottom: 12,
+                borderColor: "rgba(217, 227, 240, .12)",
+                backgroundColor: "rgba(9, 13, 21, .6)",
+                dataBackground: {
+                  lineStyle: { color: "rgba(149, 163, 181, .45)" },
+                  areaStyle: { color: "rgba(149, 163, 181, .2)" }
+                },
+                textStyle: { color: "#95a3b5" },
+                fillerColor: "rgba(69, 182, 255, .15)",
+                handleStyle: { color: "#45b6ff", borderColor: "#45b6ff" }
+              }
+            ],
+            series: []
+          });
+        }
+
+        return true;
+      }
+
+      function telemetryBuildSeries() {
+        var series = [];
+
+        telemetryState.channels.forEach(function (channel) {
+          if (!telemetryState.selected.has(channel.id)) {
+            return;
+          }
+
+          series.push({
+            id: channel.id,
+            name: channel.label,
+            type: "line",
+            smooth: false,
+            showSymbol: false,
+            symbol: "none",
+            lineStyle: { width: 1.8, color: channel.color },
+            itemStyle: { color: channel.color },
+            emphasis: { focus: "series" },
+            data: telemetryState.samplesById[channel.id] || []
+          });
+        });
+
+        return series;
+      }
+
+      function refreshTelemetryChart() {
+        updateTelemetrySampleCount();
+        if (!ensureTelemetryChart(false)) {
+          return;
+        }
+
+        telemetryState.chart.setOption({
+          series: telemetryBuildSeries()
+        });
+      }
+
+      function clearTelemetrySamples() {
+        telemetryState.channels.forEach(function (channel) {
+          telemetryState.samplesById[channel.id] = [];
+          telemetryState.latestById[channel.id] = null;
+        });
+        updateTelemetryLatestValues();
+        refreshTelemetryChart();
+      }
+
+      function trimTelemetrySamples() {
+        telemetryState.channels.forEach(function (channel) {
+          var data = telemetryState.samplesById[channel.id] || [];
+          if (data.length > telemetryState.maxPoints) {
+            data.splice(0, data.length - telemetryState.maxPoints);
+          }
+        });
+      }
+
+      function telemetryPushSample(sample, isExternalFeed) {
+        if (!sample || typeof sample !== "object") {
+          return;
+        }
+
+        if (isExternalFeed) {
+          telemetryState.externalFeedSeen = true;
+          stopTelemetryDemo();
+        }
+
+        var values = sample.values && typeof sample.values === "object" ? sample.values : sample;
+        var timestamp = Number(sample.timestamp);
+        if (!Number.isFinite(timestamp)) {
+          timestamp = Date.now();
+        }
+
+        telemetryState.channels.forEach(function (channel) {
+          var value = Number(values[channel.id]);
+          if (!Number.isFinite(value)) {
+            return;
+          }
+
+          var data = telemetryState.samplesById[channel.id];
+          if (!Array.isArray(data)) {
+            data = [];
+            telemetryState.samplesById[channel.id] = data;
+          }
+
+          data.push([timestamp, value]);
+          telemetryState.latestById[channel.id] = value;
+        });
+
+        trimTelemetrySamples();
+        updateTelemetryLatestValues();
+        refreshTelemetryChart();
+      }
+
+      function startTelemetryDemo() {
+        if (telemetryState.demoTimer || telemetryState.externalFeedSeen) {
+          return;
+        }
+
+        var startedAt = Date.now();
+
+        telemetryState.demoTimer = window.setInterval(function () {
+          var t = (Date.now() - startedAt) / 1000;
+
+          telemetryPushSample({
+            timestamp: Date.now(),
+            values: {
+              motor_rpm: 6800 + 550 * Math.sin(t * 1.3),
+              pack_voltage: 382 + 1.5 * Math.sin(t * 0.4),
+              pack_current: 42 + 18 * Math.sin(t * 0.9),
+              inverter_temp: 56 + 4 * Math.sin(t * 0.16),
+              mcu_temp: 49 + 2.5 * Math.sin(t * 0.2),
+              gps_speed: 68 + 12 * Math.sin(t * 0.5),
+              steering_angle: 2 + 11 * Math.sin(t * 1.7),
+              brake_pressure: 8 + 22 * Math.max(0, Math.sin(t * 2.2))
+            }
+          }, false);
+        }, 250);
+      }
+
+      function stopTelemetryDemo() {
+        if (!telemetryState.demoTimer) {
+          return;
+        }
+        window.clearInterval(telemetryState.demoTimer);
+        telemetryState.demoTimer = null;
+      }
+
+      function telemetrySelectAll() {
+        telemetryState.channels.forEach(function (channel) {
+          telemetryState.selected.add(channel.id);
+        });
+        renderTelemetryChannelList();
+        refreshTelemetryChart();
+      }
+
+      function telemetrySelectNone() {
+        telemetryState.selected = new Set();
+        renderTelemetryChannelList();
+        refreshTelemetryChart();
+      }
+
+      function setTelemetryMaxPoints(maxPoints) {
+        var parsed = Number(maxPoints);
+        if (!Number.isFinite(parsed) || parsed < 50) {
+          return;
+        }
+        telemetryState.maxPoints = Math.floor(parsed);
+        trimTelemetrySamples();
+        refreshTelemetryChart();
+      }
+
+      function handleTelemetryViewVisible() {
+        if (!ensureTelemetryChart(true)) {
+          return;
+        }
+        telemetryState.chart.resize();
+        refreshTelemetryChart();
+      }
+
+      function setupTelemetry() {
+        setTelemetryChannels(makeDefaultTelemetryChannels());
+
+        if (telemetrySelectAllButton) {
+          telemetrySelectAllButton.addEventListener("click", telemetrySelectAll);
+        }
+        if (telemetrySelectNoneButton) {
+          telemetrySelectNoneButton.addEventListener("click", telemetrySelectNone);
+        }
+        if (telemetryClearButton) {
+          telemetryClearButton.addEventListener("click", clearTelemetrySamples);
+        }
+
+        startTelemetryDemo();
+      }
+
       function setSystemInfo(patch) {
         if (!patch || typeof patch !== "object") {
           return;
@@ -286,6 +706,10 @@
             updateGpsMap();
           }, 0);
         }
+
+        if (pageName === "telemetry") {
+          setTimeout(handleTelemetryViewVisible, 0);
+        }
       }
 
       tabs.forEach(function (tab) {
@@ -296,15 +720,43 @@
         });
       });
 
+      setupTelemetry();
+
       var savedPage = localStorage.getItem(activeTabStorageKey);
       if (savedPage) {
         showPage(savedPage);
       }
 
       renderSystemInfo();
-      window.addEventListener("load", updateGpsMap);
+      window.addEventListener("load", function () {
+        updateGpsMap();
+        var activeView = document.querySelector(".view.is-active");
+        if (activeView && activeView.dataset.page === "telemetry") {
+          handleTelemetryViewVisible();
+        }
+      });
+      window.addEventListener("resize", function () {
+        if (homeMap) {
+          homeMap.invalidateSize();
+        }
+        if (telemetryState.chart) {
+          telemetryState.chart.resize();
+        }
+      });
+
       window.NCUSetConnectionStatus = setConnectionStatus;
       window.NCUSetSystemInfo = setSystemInfo;
+      window.NCUTelemetrySetChannels = function (channels) {
+        setTelemetryChannels(channels);
+        telemetryState.externalFeedSeen = true;
+        stopTelemetryDemo();
+      };
+      window.NCUTelemetryPushSample = function (sample) {
+        telemetryPushSample(sample, true);
+      };
+      window.NCUTelemetryClear = clearTelemetrySamples;
+      window.NCUTelemetrySetMaxPoints = setTelemetryMaxPoints;
+
       setConnectionStatus("disconnected");
     })();
   </script>

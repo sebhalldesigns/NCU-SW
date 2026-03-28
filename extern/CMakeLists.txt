@@ -36,6 +36,13 @@ set(LWIP_SOURCES
 
     # Network interfaces
     ${LWIP_DIR}/src/netif/ethernet.c
+
+    # HTTPD
+
+    ${LWIP_DIR}/src/apps/http/httpd.c
+    ${LWIP_DIR}/src/apps/http/fs.c
+    ${LWIP_DIR}/src/apps/http/fsdata.c
+    ${LWIP_DIR}/src/apps/http/http_client.c
 )
 
 set(LWIP_INCLUDES

@@ -3,3 +3,4 @@ build
 *.slxc
 *_ert_rtw/
 mx/
+.CLAUDE

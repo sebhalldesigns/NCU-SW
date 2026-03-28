@@ -30,6 +30,9 @@
 ** MARK: TYPEDEFS
 ***************************************************************/
 
+/* UDP receive callback: called when data arrives */
+typedef void (*eth_udp_recv_callback_t)(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port);
+
 /***************************************************************
 ** MARK: FUNCTION DEFS
 ***************************************************************/
@@ -37,5 +40,13 @@
 bool eth_init();
 
 void eth_poll();
+
+/* UDP API (callback-based for NO_SYS mode) */
+int eth_udp_bind(uint16_t port, eth_udp_recv_callback_t recv_callback);
+
+int eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *data, uint16_t len);
+
+/* Interrupt flag: set by ETH_IRQHandler, cleared by main loop */
+extern volatile int eth_packet_ready;
 
 #endif /* ETH_H */

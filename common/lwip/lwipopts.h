@@ -36,14 +36,14 @@
 #define ETH_PAD_SIZE                0
 
 /* Checksum offload to ETH MAC hardware */
-#define CHECKSUM_GEN_IP             0
-#define CHECKSUM_GEN_UDP            0
-#define CHECKSUM_GEN_TCP            0
-#define CHECKSUM_GEN_ICMP           0
-#define CHECKSUM_CHECK_IP           0
-#define CHECKSUM_CHECK_UDP          0
-#define CHECKSUM_CHECK_TCP          0
-#define CHECKSUM_CHECK_ICMP         0
+#define CHECKSUM_GEN_IP             1
+#define CHECKSUM_GEN_UDP            1
+#define CHECKSUM_GEN_TCP            1
+#define CHECKSUM_GEN_ICMP           1
+#define CHECKSUM_CHECK_IP           1
+#define CHECKSUM_CHECK_UDP          1
+#define CHECKSUM_CHECK_TCP          1
+#define CHECKSUM_CHECK_ICMP         1
 
 /* ---- Stats (disable for production, useful for debug) ---- */
 #define LWIP_STATS                  0
@@ -59,5 +59,11 @@
 #define LWIP_ARP                    1
 #define MEMP_NUM_PBUF               16
 #define PBUF_POOL_BUFSIZE           1524  /* must be > max frame size */
+
+/* ---- HTTP Server (httpd) ---- */
+#define LWIP_HTTPD                  1
+#define HTTPD_SERVER_PORT           80
+#define LWIP_HTTPD_CUSTOM_FILES     1
+#define LWIP_HTTPD_DYNAMIC_HEADERS  1
 
 #endif /* LWIPOPTS_H */

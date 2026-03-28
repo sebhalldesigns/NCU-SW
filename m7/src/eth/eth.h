@@ -32,6 +32,8 @@
 
 /* UDP receive callback: called when data arrives */
 typedef void (*eth_udp_recv_callback_t)(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port);
+/* WebSocket receive callback: called when a complete WS frame is received. */
+typedef void (*eth_ws_recv_callback_t)(const uint8_t *data, uint16_t len, bool is_text);
 
 /***************************************************************
 ** MARK: FUNCTION DEFS
@@ -45,6 +47,12 @@ void eth_poll();
 int eth_udp_bind(uint16_t port, eth_udp_recv_callback_t recv_callback);
 
 int eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *data, uint16_t len);
+
+/* WebSocket API (server mode, raw lwIP TCP) */
+int eth_ws_init(uint16_t port, eth_ws_recv_callback_t recv_callback);
+bool eth_ws_is_connected(void);
+int eth_ws_send_text(const uint8_t *data, uint16_t len);
+int eth_ws_send_binary(const uint8_t *data, uint16_t len);
 
 /* Interrupt flag: set by ETH_IRQHandler, cleared by main loop */
 extern volatile int eth_packet_ready;

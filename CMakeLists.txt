@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(NCU-SW)
+project(NCU)
 
 enable_language(C CXX ASM)
 

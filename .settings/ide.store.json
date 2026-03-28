@@ -1,10 +1,10 @@
 {
   "board": "NUCLEO-H755ZI-Q",
   "device": "STM32H755ZIT6",
-  "core": "Cortex-M7",
-  "order": 0,
   "toolchain": "GCC",
   "source": {
     "sourceType": "Empty"
-  }
+  },
+  "core": "Cortex-M7",
+  "order": 0
 }

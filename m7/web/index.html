@@ -4,13 +4,97 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HTML5 Boilerplate</title>
+  <title>NCU Web UI</title>
   <link rel="stylesheet" href="styles.css">
   <link href="https://iosevka-webfonts.github.io/iosevka/Iosevka.css" rel="stylesheet" />
 </head>
 
 <body>
-  <h1>Page Title</h1>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">NCU</div>
+      <nav class="tabs" aria-label="NCU views">
+        <button class="tab is-active" type="button" data-page="home" aria-current="page">Home</button>
+        <button class="tab" type="button" data-page="telemetry">Telemetry</button>
+        <button class="tab" type="button" data-page="calibration">Calibration</button>
+        <button class="tab" type="button" data-page="configuration">Configuration</button>
+      </nav>
+    </header>
+
+    <main class="views">
+      <section class="view is-active" data-page="home" aria-label="Home"></section>
+      <section class="view" data-page="telemetry" aria-label="Telemetry"></section>
+      <section class="view" data-page="calibration" aria-label="Calibration"></section>
+      <section class="view" data-page="configuration" aria-label="Configuration"></section>
+    </main>
+
+    <footer class="statusbar" role="status" aria-live="polite">
+      <span id="connection-indicator" class="status-indicator status-disconnected" aria-hidden="true"></span>
+      <span class="status-label">Connection:</span>
+      <span id="connection-text">Disconnected</span>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll(".tab");
+      var views = document.querySelectorAll(".view");
+      var activeTabStorageKey = "ncu.active_tab";
+      var connectionText = document.getElementById("connection-text");
+      var connectionIndicator = document.getElementById("connection-indicator");
+
+      function setConnectionStatus(status) {
+        var normalizedStatus = String(status || "disconnected").toLowerCase();
+        var label = "Disconnected";
+
+        connectionIndicator.className = "status-indicator";
+
+        if (normalizedStatus === "connected") {
+          label = "Connected";
+          connectionIndicator.classList.add("status-connected");
+        } else if (normalizedStatus === "connecting") {
+          label = "Connecting";
+          connectionIndicator.classList.add("status-connecting");
+        } else {
+          connectionIndicator.classList.add("status-disconnected");
+        }
+
+        connectionText.textContent = label;
+      }
+
+      function showPage(pageName) {
+        tabs.forEach(function (tab) {
+          var isActive = tab.dataset.page === pageName;
+          tab.classList.toggle("is-active", isActive);
+          if (isActive) {
+            tab.setAttribute("aria-current", "page");
+          } else {
+            tab.removeAttribute("aria-current");
+          }
+        });
+
+        views.forEach(function (view) {
+          view.classList.toggle("is-active", view.dataset.page === pageName);
+        });
+      }
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          var selectedPage = tab.dataset.page;
+          localStorage.setItem(activeTabStorageKey, selectedPage);
+          showPage(selectedPage);
+        });
+      });
+
+      var savedPage = localStorage.getItem(activeTabStorageKey);
+      if (savedPage) {
+        showPage(savedPage);
+      }
+
+      window.NCUSetConnectionStatus = setConnectionStatus;
+      setConnectionStatus("disconnected");
+    })();
+  </script>
 </body>
 
 </html>

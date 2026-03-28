@@ -6,7 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NCU Web UI</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link href="https://iosevka-webfonts.github.io/iosevka/Iosevka.css" rel="stylesheet" />
+  <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
 <body>
@@ -22,7 +24,51 @@
     </header>
 
     <main class="views">
-      <section class="view is-active" data-page="home" aria-label="Home"></section>
+      <section class="view is-active" data-page="home" aria-label="Home">
+        <div class="home">
+          <header class="home-header">
+            <h1 class="home-title">System Overview</h1>
+          </header>
+
+          <div class="home-grid">
+            <article class="home-card">
+              <h2>Software</h2>
+              <div class="kv"><span>Version</span><strong id="home-version">v0.0.0-dev</strong></div>
+              <div class="kv"><span>API</span><strong id="home-api-version">udp-api-draft</strong></div>
+              <div class="kv"><span>Git Commit</span><strong id="home-git-commit">--------</strong></div>
+              <div class="kv"><span>Build Date</span><strong id="home-build-date">--</strong></div>
+            </article>
+
+            <article class="home-card">
+              <h2>System</h2>
+              <div class="kv"><span>Board</span><strong id="home-board">STM32H755</strong></div>
+              <div class="kv"><span>Serial</span><strong id="home-serial">NCU-0000</strong></div>
+              <div class="kv"><span>Mode</span><strong id="home-mode">Idle</strong></div>
+              <div class="kv"><span>Boot Reason</span><strong id="home-boot-reason">Power On</strong></div>
+              <div class="kv"><span>Uptime</span><strong id="home-uptime">00:00:00</strong></div>
+              <div class="kv"><span>CPU Load</span><strong id="home-cpu-load">-- %</strong></div>
+              <div class="kv"><span>MCU Temp</span><strong id="home-mcu-temp">-- C</strong></div>
+            </article>
+
+            <article class="home-card">
+              <h2>Network</h2>
+              <div class="kv"><span>IP Address</span><strong id="home-ip-address">--</strong></div>
+              <div class="kv"><span>MAC Address</span><strong id="home-mac-address">--:--:--:--:--:--</strong></div>
+              <div class="kv"><span>WebSocket</span><strong id="home-ws-state">Disconnected</strong></div>
+              <div class="kv"><span>Last Sync</span><strong id="home-last-sync">--</strong></div>
+            </article>
+
+            <article class="home-card">
+              <h2>GPS</h2>
+              <div class="kv"><span>GPS Fix</span><strong id="home-gps-fix">No Fix</strong></div>
+              <div class="map-wrap">
+                <div id="home-map" class="home-map" aria-label="GPS map preview"></div>
+                <p id="home-map-caption" class="map-caption">Awaiting GPS coordinates</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
       <section class="view" data-page="telemetry" aria-label="Telemetry"></section>
       <section class="view" data-page="calibration" aria-label="Calibration"></section>
       <section class="view" data-page="configuration" aria-label="Configuration"></section>
@@ -42,6 +88,160 @@
       var activeTabStorageKey = "ncu.active_tab";
       var connectionText = document.getElementById("connection-text");
       var connectionIndicator = document.getElementById("connection-indicator");
+      var homeWsState = document.getElementById("home-ws-state");
+      var homeMapElement = document.getElementById("home-map");
+      var homeMapCaption = document.getElementById("home-map-caption");
+      var homeMap = null;
+      var homeMapMarker = null;
+      var homeFieldMap = {
+        version: document.getElementById("home-version"),
+        apiVersion: document.getElementById("home-api-version"),
+        gitCommit: document.getElementById("home-git-commit"),
+        buildDate: document.getElementById("home-build-date"),
+        board: document.getElementById("home-board"),
+        serial: document.getElementById("home-serial"),
+        mode: document.getElementById("home-mode"),
+        bootReason: document.getElementById("home-boot-reason"),
+        ipAddress: document.getElementById("home-ip-address"),
+        macAddress: document.getElementById("home-mac-address"),
+        gpsFix: document.getElementById("home-gps-fix"),
+        lastSync: document.getElementById("home-last-sync"),
+        uptime: document.getElementById("home-uptime"),
+        cpuLoad: document.getElementById("home-cpu-load"),
+        mcuTemp: document.getElementById("home-mcu-temp")
+      };
+      var systemInfo = {
+        version: "v0.0.0-dev",
+        apiVersion: "udp-api-draft",
+        gitCommit: "--------",
+        buildDate: "--",
+        board: "STM32H755",
+        serial: "NCU-0000",
+        mode: "Idle",
+        bootReason: "Power On",
+        ipAddress: (window.location && window.location.hostname) ? window.location.hostname : "--",
+        macAddress: "--:--:--:--:--:--",
+        gpsFix: "No Fix",
+        gpsLat: null,
+        gpsLon: null,
+        lastSync: "--",
+        uptime: "00:00:00",
+        cpuLoad: "-- %",
+        mcuTemp: "-- C"
+      };
+
+      function formatUptime(totalSeconds) {
+        var safe = Number(totalSeconds);
+        if (!Number.isFinite(safe) || safe < 0) {
+          return "00:00:00";
+        }
+        var seconds = Math.floor(safe);
+        var days = Math.floor(seconds / 86400);
+        seconds = seconds % 86400;
+        var hours = Math.floor(seconds / 3600);
+        seconds = seconds % 3600;
+        var minutes = Math.floor(seconds / 60);
+        var secs = seconds % 60;
+        var hh = String(hours).padStart(2, "0");
+        var mm = String(minutes).padStart(2, "0");
+        var ss = String(secs).padStart(2, "0");
+        return days > 0 ? String(days) + "d " + hh + ":" + mm + ":" + ss : hh + ":" + mm + ":" + ss;
+      }
+
+      function renderSystemInfo() {
+        Object.keys(homeFieldMap).forEach(function (key) {
+          if (homeFieldMap[key]) {
+            homeFieldMap[key].textContent = String(systemInfo[key]);
+          }
+        });
+        updateGpsMap();
+      }
+
+      function parseCoordinate(value) {
+        var parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+
+      function ensureGpsMap() {
+        if (!homeMapElement || !window.L) {
+          return false;
+        }
+
+        if (!homeMap) {
+          homeMap = window.L.map(homeMapElement, {
+            zoomControl: false,
+            attributionControl: false
+          }).setView([52.0, -1.0], 5);
+
+          window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19
+          }).addTo(homeMap);
+        }
+
+        return true;
+      }
+
+      function updateGpsMap() {
+        if (!ensureGpsMap()) {
+          return;
+        }
+
+        var lat = parseCoordinate(systemInfo.gpsLat);
+        var lon = parseCoordinate(systemInfo.gpsLon);
+        var hasFix = lat !== null && lon !== null;
+
+        if (!hasFix) {
+          if (homeMapMarker) {
+            homeMap.removeLayer(homeMapMarker);
+            homeMapMarker = null;
+          }
+          if (homeMapCaption) {
+            homeMapCaption.textContent = "Awaiting GPS coordinates";
+          }
+          return;
+        }
+
+        var position = [lat, lon];
+
+        if (!homeMapMarker) {
+          homeMapMarker = window.L.circleMarker(position, {
+            radius: 6,
+            color: "#45b6ff",
+            fillColor: "#45b6ff",
+            fillOpacity: 0.9,
+            weight: 1
+          }).addTo(homeMap);
+        } else {
+          homeMapMarker.setLatLng(position);
+        }
+
+        homeMap.setView(position, 15);
+        if (homeMapCaption) {
+          homeMapCaption.textContent = lat.toFixed(5) + ", " + lon.toFixed(5);
+        }
+      }
+
+      function setSystemInfo(patch) {
+        if (!patch || typeof patch !== "object") {
+          return;
+        }
+
+        Object.keys(patch).forEach(function (key) {
+          if (key === "connectionStatus") {
+            setConnectionStatus(patch[key]);
+            return;
+          }
+          if (key === "uptimeSeconds") {
+            systemInfo.uptime = formatUptime(patch[key]);
+            return;
+          }
+          if (Object.prototype.hasOwnProperty.call(systemInfo, key)) {
+            systemInfo[key] = patch[key];
+          }
+        });
+
+        renderSystemInfo();
+      }
 
       function setConnectionStatus(status) {
         var normalizedStatus = String(status || "disconnected").toLowerCase();
@@ -60,6 +260,9 @@
         }
 
         connectionText.textContent = label;
+        if (homeWsState) {
+          homeWsState.textContent = label;
+        }
       }
 
       function showPage(pageName) {
@@ -76,6 +279,13 @@
         views.forEach(function (view) {
           view.classList.toggle("is-active", view.dataset.page === pageName);
         });
+
+        if (pageName === "home" && homeMap) {
+          setTimeout(function () {
+            homeMap.invalidateSize();
+            updateGpsMap();
+          }, 0);
+        }
       }
 
       tabs.forEach(function (tab) {
@@ -91,7 +301,10 @@
         showPage(savedPage);
       }
 
+      renderSystemInfo();
+      window.addEventListener("load", updateGpsMap);
       window.NCUSetConnectionStatus = setConnectionStatus;
+      window.NCUSetSystemInfo = setSystemInfo;
       setConnectionStatus("disconnected");
     })();
   </script>

@@ -51,6 +51,23 @@ function(toolchain_target_hook target_name)
     message(STATUS "Invoking toolchain target hook for target '${target_name}'...")
 
     set(TARGET_NAME ${target_name})
+
+    # Bare-metal firmware should not use PIC/PIE.
+    # PIC introduces GOT accesses for globals (e.g. tunables), but startup only
+    # initializes .data/.bss, not GOT relocation tables.
+    if(TARGET ${TARGET_NAME})
+        set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
+        target_compile_options(${TARGET_NAME} PRIVATE -fno-pic -fno-pie)
+    endif()
+    if(TARGET ${TARGET_NAME}_objects)
+        set_target_properties(${TARGET_NAME}_objects PROPERTIES POSITION_INDEPENDENT_CODE OFF)
+        target_compile_options(${TARGET_NAME}_objects PRIVATE -fno-pic -fno-pie)
+    endif()
+    if(TARGET app_objects)
+        set_target_properties(app_objects PROPERTIES POSITION_INDEPENDENT_CODE OFF)
+        target_compile_options(app_objects PRIVATE -fno-pic -fno-pie)
+    endif()
+
     target_link_libraries(${target_name} PRIVATE ncukit)
 
     # Simulink-generated projects typically enable only C/CXX.
@@ -74,6 +91,7 @@ function(toolchain_target_hook target_name)
     )
 
     target_link_options(${TARGET_NAME} PRIVATE
+        -fno-pie
         -T${LINKER_SCRIPT}
         ${CPU_PARAMS}
         -Wl,-Map=${TARGET_NAME}.map

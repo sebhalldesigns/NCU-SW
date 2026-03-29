@@ -19,7 +19,8 @@
             "command": "C:\\ST\\STM32CubeIDE_2.1.1\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.400.202601091506\\tools\\bin\\STM32_Programmer_CLI.exe",
             "args": [
                 "-c", "port=swd",
-                "-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
+                //"-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
+                "-d", "${workspaceFolder}/app/app.elf",
                 "-v",
                 "-rst"
             ],

@@ -7,3 +7,4 @@ mx/
 *_ncu_rtw/
 slprj/
 *.exe
+*.elf

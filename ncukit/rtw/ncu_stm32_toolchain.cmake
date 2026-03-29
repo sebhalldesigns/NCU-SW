@@ -242,4 +242,4 @@ set(CMAKE_EXECUTABLE_SUFFIX_CXX     ".elf")
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-include_directories(${CMAKE_CURRENT_LIST_DIR}/include)
+include(${CMAKE_CURRENT_LIST_DIR}/../ncukit.cmake)

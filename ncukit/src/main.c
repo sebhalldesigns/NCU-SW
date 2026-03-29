@@ -29,11 +29,11 @@ int main(void)
     RCC->APB1LENR |= RCC_APB1LENR_TIM3EN; /* enable TIM3 clock */
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOBEN; /* enable GPIO clock */
     
-    __DSB(); /* ensure that the clock is enabled before accessing GPIO registers */ 
+    __DSB(); /* ensure that the clock is enabled before accessing GPIO registers */
 
     volatile int wait = 0;
     
-    while (wait < 1000)  
+    while (wait < 1000) 
     {
         wait++;
     }
@@ -45,9 +45,9 @@ int main(void)
     GPIOB->OSPEEDR &= ~(0x3 << (0 * 2));
     GPIOB->PUPDR   &= ~(0x3 << (0 * 2));
 
-    // TIM3 setup
+    // TIM3 setup 
     TIM3->PSC  = 50000;
-    TIM3->ARR  = 2000;    // different rate to M7 so you can visually distinguish
+    TIM3->ARR  = 1000;    // different rate to M7 so you can visually distinguish
     TIM3->DIER |= TIM_DIER_UIE;
 
     NVIC_SetPriority(TIM3_IRQn, 1);

@@ -9,6 +9,8 @@ function ncu_stf_select_callback(hDlg, hSrc)
         i_set_cfg_param(hDlg, hSrc, "GenCodeOnly", "off");
         i_set_cfg_param(hDlg, hSrc, "GenerateSampleERTMain", "off");
         i_set_cfg_param(hDlg, hSrc, "Toolchain", "NCU STM32 CMake");
+        i_set_cfg_param(hDlg, hSrc, "PostCodeGenCommand", "ncu_build_hook");
+
     catch ME
         warning("NCU:STFSelectCallbackFailed", ...
             "Failed to apply NCU STF defaults: %s", ME.message);
@@ -30,3 +32,4 @@ function i_set_cfg_param(hDlg, hSrc, paramName, paramValue)
         end
     end
 end
+

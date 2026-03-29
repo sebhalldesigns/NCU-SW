@@ -7,6 +7,9 @@
 %assign TargetType = "RT"
 %assign Language   = "C"
 
+%% Prevent generation of main function, as it is provided by the NCU SDK.
+%assign thisDir = FEVAL("fileparts", FEVAL("which", "ncu.tlc"))
+
 %include "codegenentry.tlc"
 
 /%

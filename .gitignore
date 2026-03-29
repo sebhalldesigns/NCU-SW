@@ -4,3 +4,6 @@ build
 *_ert_rtw/
 mx/
 .CLAUDE
+*_ncu_rtw/
+slprj/
+*.exe

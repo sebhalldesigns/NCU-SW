@@ -1,0 +1,22 @@
+%% SYSTLC: NCU Networking ECU TMF: ert_default_tmf MAKE: make_rtw
+%% NCU target derives behavior from ert.tlc
+
+%selectfile NULL_FILE
+
+%assign CodeFormat = "Embedded-C"
+%assign TargetType = "RT"
+%assign Language   = "C"
+
+%include "codegenentry.tlc"
+
+/%
+  BEGIN_RTW_OPTIONS
+  rtwoptions = [];
+  rtwgensettings.BuildDirSuffix = '_ncu_rtw';
+  rtwgensettings.Version = '1';
+  rtwgensettings.DerivedFrom = 'ert.tlc';
+  rtwgensettings.Description = 'NCU Networking ECU';
+  rtwgensettings.SelectCallback = 'ncu_stf_select_callback(hDlg, hSrc)';
+  rtwgensettings.ActivateCallback = 'ncu_stf_select_callback(hDlg, hSrc)';
+  END_RTW_OPTIONS
+%/

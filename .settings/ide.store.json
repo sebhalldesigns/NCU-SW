@@ -1,6 +1,5 @@
 {
-  "board": "NUCLEO-H755ZI-Q",
-  "device": "STM32H755ZIT6",
+  "device": "STM32H745ZIT6",
   "toolchain": "GCC",
   "source": {
     "sourceType": "Empty"

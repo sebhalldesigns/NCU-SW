@@ -4,41 +4,45 @@
         {
             "label": "flash-m7",
             "type": "shell",
-            "command": ".\\..\\AppData\\Local\\stm32cube\\bundles\\programmer\\2.22.0+st.1\\bin\\STM32_Programmer_CLI.exe",
+            "command": "${workspaceFolder}/openocd/bin/openocd.exe",
             "args": [
-                "-c", "port=swd",
-                "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",
-                "-v",
-                "-rst"
+                "-f", "${workspaceFolder}/openocd/openocd/scripts/board/ncu.cfg",
+                "-c", "init; halt; flash write_image erase build/Release/m7/ncu-m7.bin 0x08000000; reset init; resume; shutdown"
             ],
-            "problemMatcher": []
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "group": "build"
         },
         {
             "label": "flash-m4",
             "type": "shell",
-            "command": ".\\..\\AppData\\Local\\stm32cube\\bundles\\programmer\\2.22.0+st.1\\bin\\STM32_Programmer_CLI.exe",
+            "command": "${workspaceFolder}/openocd/bin/openocd.exe",
             "args": [
-                "-c", "port=swd",
-                //"-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
-                "-d", "${workspaceFolder}/app/app.elf",
-                "-v",
-                "-rst"
+                "-f", "${workspaceFolder}/openocd/openocd/scripts/board/ncu.cfg",
+                "-c", "init; halt; flash write_image erase build/Release/m4/ncu-m4.bin 0x08100000; reset init; resume; shutdown"
             ],
-            "problemMatcher": []
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "group": "build"
         },
         {
             "label": "flash-all",
             "type": "shell",
-            "command": ".\\..\\AppData\\Local\\stm32cube\\bundles\\programmer\\2.22.0+st.1\\bin\\STM32_Programmer_CLI.exe",
+            "command": "${workspaceFolder}/openocd/bin/openocd.exe",
             "args": [
-                "-c", "port=swd",
-                "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",
-                "-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
-                "-v",
-                "-rst"
+                "-f", "${workspaceFolder}/openocd/openocd/scripts/board/ncu.cfg",
+                "-c", "init; halt; flash write_image erase build/Release/m7/ncu-m7.bin 0x08000000; flash write_image erase build/Release/m4/ncu-m4.bin 0x08100000; reset init; resume; shutdown"
             ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "dependsOn": "CMake: build",
-            "problemMatcher": []
+            "problemMatcher": [],
+            "group": "build"
         }
     ]
 }

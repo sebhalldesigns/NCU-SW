@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug M7 (OpenOCD)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "openocd",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/m7/ncu-m7.elf",
+      "serverpath": "${workspaceFolder}/openocd/bin/openocd.exe",
+      "gdbPath": "C:/Users/seb/AppData/Local/stm32cube/bundles/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gdb.exe",
+      "configFiles": [
+        "${workspaceFolder}/openocd/openocd/scripts/board/ncu.cfg"
+      ],
+      "device": "STM32H745ZIT6",
+      "overrideLaunchCommands": [
+        "monitor halt",
+        "monitor flash write_image erase build/Debug/m7/ncu-m7.bin 0x08000000",
+        "monitor reset init",
+        "symbol-file build/Debug/m7/ncu-m7.elf",
+        "monitor halt"
+      ],
+      "overrideRestartCommands": [
+        "monitor halt",
+        "monitor flash write_image erase build/Debug/m7/ncu-m7.bin 0x08000000",
+        "monitor reset init",
+        "monitor halt"
+      ],
+      "postLaunchCommands": [
+        "break main",
+        "continue"
+      ],
+      "showDevDebugOutput": "raw"
+    }
+  ]
+}

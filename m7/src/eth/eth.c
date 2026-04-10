@@ -135,6 +135,10 @@ bool eth_init()
     ip4_addr_set_zero(&netmask);
     ip4_addr_set_zero(&gw);
 
+    IP4_ADDR(&ipaddr, 192, 168, 1, 50);
+    IP4_ADDR(&netmask, 255, 255, 255, 0);
+    IP4_ADDR(&gw, 192, 168, 1, 1);
+
     /* Add network interface */
     netif_add(&eth_netif, &ipaddr, &netmask, &gw, NULL, ethernetif_init, ethernet_input);
 
@@ -765,13 +769,13 @@ static void ethernetif_update_link_state()
             /* Link is up - apply negotiated mode */
             ethernetif_apply_link_mode();
             netif_set_link_up(&eth_netif);
-            dhcp_start(&eth_netif);
+            //dhcp_start(&eth_netif);
         }
         else
         {
             /* Link is down */
             netif_set_link_down(&eth_netif);
-            dhcp_stop(&eth_netif);
+            //dhcp_stop(&eth_netif);
         }
     }
 }

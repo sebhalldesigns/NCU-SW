@@ -1,7 +1,7 @@
 set(TARGET_NAME ncu-m7)
 
 set(DEFINES
-    STM32H755xx
+    STM32H745xx
     CORE_CM7
 )
 set(SOURCES
@@ -26,7 +26,7 @@ set(INCLUDES
 
 set(LWIP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../extern/lwip)
 
-set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/sld/stm32h755xi_flash_cm7.ld)
+set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/sld/stm32h745xi_flash_cm7.ld)
 
 set(CPU_PARAMS
     -mcpu=cortex-m7

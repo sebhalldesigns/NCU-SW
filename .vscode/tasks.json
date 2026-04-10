@@ -4,7 +4,7 @@
         {
             "label": "flash-m7",
             "type": "shell",
-            "command": "C:\\ST\\STM32CubeIDE_2.1.1\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.400.202601091506\\tools\\bin\\STM32_Programmer_CLI.exe",
+            "command": ".\\..\\AppData\\Local\\stm32cube\\bundles\\programmer\\2.22.0+st.1\\bin\\STM32_Programmer_CLI.exe",
             "args": [
                 "-c", "port=swd",
                 "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",
@@ -16,7 +16,7 @@
         {
             "label": "flash-m4",
             "type": "shell",
-            "command": "C:\\ST\\STM32CubeIDE_2.1.1\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.400.202601091506\\tools\\bin\\STM32_Programmer_CLI.exe",
+            "command": ".\\..\\AppData\\Local\\stm32cube\\bundles\\programmer\\2.22.0+st.1\\bin\\STM32_Programmer_CLI.exe",
             "args": [
                 "-c", "port=swd",
                 //"-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
@@ -29,7 +29,7 @@
         {
             "label": "flash-all",
             "type": "shell",
-            "command": "C:\\ST\\STM32CubeIDE_2.1.1\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.400.202601091506\\tools\\bin\\STM32_Programmer_CLI.exe",
+            "command": ".\\..\\AppData\\Local\\stm32cube\\bundles\\programmer\\2.22.0+st.1\\bin\\STM32_Programmer_CLI.exe",
             "args": [
                 "-c", "port=swd",
                 "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",

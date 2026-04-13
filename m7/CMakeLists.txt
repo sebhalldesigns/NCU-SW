@@ -25,6 +25,12 @@ set(INCLUDES
 )
 
 set(LWIP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../extern/lwip)
+set(TUSB_CONFIG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/usb)
+set(TUSB_CONFIG_HEADER ${TUSB_CONFIG_DIR}/tusb_config.h)
+
+if(NOT EXISTS ${TUSB_CONFIG_HEADER})
+    message(FATAL_ERROR "Missing TinyUSB config header: ${TUSB_CONFIG_HEADER}")
+endif()
 
 set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/sld/stm32h745xi_flash_cm7.ld)
 
@@ -37,12 +43,21 @@ set(CPU_PARAMS
 
 add_executable(${TARGET_NAME} ${SOURCES})
 
-target_link_libraries(${TARGET_NAME} PRIVATE lwip)
+target_link_libraries(${TARGET_NAME} PRIVATE
+    lwip
+    tinyusb
+)
 
-target_include_directories(${TARGET_NAME} PRIVATE ${INCLUDES})
+target_include_directories(${TARGET_NAME} PRIVATE
+    ${INCLUDES}
+    ${TUSB_CONFIG_DIR}
+)
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
     ${DEFINES}
+    CFG_TUSB_MCU=OPT_MCU_STM32H7
+    CFG_TUSB_OS=OPT_OS_NONE
+    CFG_TUSB_RHPORT0_MODE=OPT_MODE_DEVICE
     $<$<CONFIG:Debug>:DEBUG>
 )
 

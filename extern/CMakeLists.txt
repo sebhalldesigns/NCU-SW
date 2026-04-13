@@ -61,3 +61,40 @@ target_compile_options(lwip PRIVATE
     -mfpu=fpv5-d16
     -mfloat-abi=hard
 )
+
+set(TINYUSB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb)
+
+set(TINYUSB_SOURCES
+    ${TINYUSB_DIR}/src/tusb.c
+    ${TINYUSB_DIR}/src/common/tusb_fifo.c
+    ${TINYUSB_DIR}/src/device/usbd.c
+    ${TINYUSB_DIR}/src/device/usbd_control.c
+    ${TINYUSB_DIR}/src/class/cdc/cdc_device.c
+    ${TINYUSB_DIR}/src/portable/synopsys/dwc2/dcd_dwc2.c
+    ${TINYUSB_DIR}/src/portable/synopsys/dwc2/dwc2_common.c
+)
+
+add_library(tinyusb STATIC ${TINYUSB_SOURCES})
+
+target_include_directories(tinyusb PUBLIC
+    ${TINYUSB_DIR}/src
+    ${PROJECT_SOURCE_DIR}/m7/src/usb
+    ${PROJECT_SOURCE_DIR}/common/
+    ${PROJECT_SOURCE_DIR}/common/CMSIS/include/
+    ${PROJECT_SOURCE_DIR}/common/CMSIS/device/ST/STM32H7xx/include/
+)
+
+target_compile_definitions(tinyusb PUBLIC
+    CFG_TUSB_MCU=OPT_MCU_STM32H7
+    CFG_TUSB_OS=OPT_OS_NONE
+    CFG_TUSB_RHPORT0_MODE=OPT_MODE_DEVICE
+    STM32H745xx
+    CORE_CM7
+)
+
+target_compile_options(tinyusb PRIVATE
+    -mcpu=cortex-m7
+    -mthumb
+    -mfpu=fpv5-d16
+    -mfloat-abi=hard
+)

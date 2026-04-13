@@ -1,3 +1,6 @@
 [submodule "extern/lwip"]
 	path = extern/lwip
 	url = https://git.savannah.gnu.org/git/lwip.git
+[submodule "extern/tinyusb"]
+	path = extern/tinyusb
+	url = https://github.com/hathach/tinyusb

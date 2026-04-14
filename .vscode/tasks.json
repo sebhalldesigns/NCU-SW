@@ -8,7 +8,6 @@
             "args": [
                 "-c", "port=swd", "freq=200",
                 "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",
-                "-v",
                 "-rst"
             ],
             "problemMatcher": []
@@ -20,7 +19,6 @@
             "args": [
                 "-c", "port=swd", "freq=200",
                 "-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
-                "-v",
                 "-rst"
             ],
             "problemMatcher": []
@@ -33,7 +31,6 @@
                 "-c", "port=swd", "freq=200",
                 "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",
                 "-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
-                "-v",
                 "-rst"
             ],
             "dependsOn": "CMake: build",

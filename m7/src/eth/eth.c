@@ -17,6 +17,9 @@
 
 #include "eth.h"
 
+#include <stdarg.h>
+#include <stdio.h>
+
 #include <lwip/init.h>
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
@@ -51,6 +54,7 @@
 #define ETH_TX_DESC_FL_MASK  0x7FFFU
 #define ETH_TX_WAIT_SPINS   1000000U
 #define ETH_LINK_CHECK_INTERVAL_MS 500U
+#define ETH_DBG_LINE_MAX  220U
 
 /***************************************************************
 ** MARK: TYPEDEFS
@@ -101,6 +105,13 @@ volatile int eth_packet_ready = 0;
 /* UDP support */
 static struct udp_pcb *udp_pcb = NULL;
 static eth_udp_recv_callback_t udp_recv_callback = NULL;
+
+/* Dedicated UDP debug stream state */
+static struct udp_pcb *dbg_udp_pcb = NULL;
+static ip_addr_t dbg_dst_addr;
+static uint16_t dbg_dst_port = 0U;
+static bool dbg_enabled = false;
+static volatile uint32_t dbg_seq = 0U;
 
 /***************************************************************
 ** MARK: STATIC FUNCTION DEFS
@@ -243,6 +254,93 @@ int eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *data, uint16
     pbuf_free(p);
 
     return (err == ERR_OK) ? 0 : -1;
+}
+
+bool eth_dbg_init(uint32_t dst_ip, uint16_t dst_port)
+{
+    if (dbg_udp_pcb != NULL)
+    {
+        udp_remove(dbg_udp_pcb);
+        dbg_udp_pcb = NULL;
+    }
+
+    dbg_udp_pcb = udp_new();
+    if (dbg_udp_pcb == NULL)
+    {
+        return false;
+    }
+
+    dbg_dst_addr.addr = dst_ip;
+    dbg_dst_port = dst_port;
+
+    dbg_enabled = true;
+    dbg_seq = 0U;
+    return true;
+}
+
+int eth_dbg_send(const uint8_t *data, uint16_t len)
+{
+    if ((!dbg_enabled) || (dbg_udp_pcb == NULL) || (data == NULL) || (len == 0U))
+    {
+        return -1;
+    }
+
+    struct pbuf *pkt = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
+    if (pkt == NULL)
+    {
+        return -1;
+    }
+
+    pbuf_take(pkt, data, len);
+    err_t err = udp_sendto(dbg_udp_pcb, pkt, &dbg_dst_addr, dbg_dst_port);
+    pbuf_free(pkt);
+    return (err == ERR_OK) ? 0 : -1;
+}
+
+void eth_dbg_printf(const char *fmt, ...)
+{
+    if ((!dbg_enabled) || (fmt == NULL))
+    {
+        return;
+    }
+
+    uint32_t seq = dbg_seq++;
+    uint32_t ts_us = sys_micros();
+
+    char line[ETH_DBG_LINE_MAX];
+    int prefix = snprintf(line, sizeof(line), "[%010lu us][%06lu] ",
+                          (unsigned long)ts_us,
+                          (unsigned long)seq);
+    if (prefix < 0)
+    {
+        return;
+    }
+
+    uint32_t p = (uint32_t)prefix;
+    if (p >= (ETH_DBG_LINE_MAX - 3U))
+    {
+        return;
+    }
+
+    va_list args;
+    va_start(args, fmt);
+    int body = vsnprintf(&line[p], ETH_DBG_LINE_MAX - p - 2U, fmt, args);
+    va_end(args);
+    if (body < 0)
+    {
+        return;
+    }
+
+    uint32_t used = p + (uint32_t)body;
+    if (used > (ETH_DBG_LINE_MAX - 3U))
+    {
+        used = ETH_DBG_LINE_MAX - 3U;
+    }
+    line[used++] = '\r';
+    line[used++] = '\n';
+    line[used] = '\0';
+
+    (void)eth_dbg_send((const uint8_t *)line, (uint16_t)used);
 }
 
 /***************************************************************

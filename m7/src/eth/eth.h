@@ -48,6 +48,11 @@ int eth_udp_bind(uint16_t port, eth_udp_recv_callback_t recv_callback);
 
 int eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *data, uint16_t len);
 
+/* UDP debug log API (non-blocking, buffered, flushes inside eth_poll) */
+bool eth_dbg_init(uint32_t dst_ip, uint16_t dst_port);
+int eth_dbg_send(const uint8_t *data, uint16_t len);
+void eth_dbg_printf(const char *fmt, ...);
+
 /* WebSocket API (server mode, raw lwIP TCP) */
 int eth_ws_init(uint16_t port, eth_ws_recv_callback_t recv_callback);
 bool eth_ws_is_connected(void);

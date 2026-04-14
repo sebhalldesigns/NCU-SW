@@ -43,9 +43,15 @@ typedef struct
     xcp_session_state_t state;
     xcp_conn_type_t conn_type;
     xcp_conn_info_t conn_info;
-    uint32_t last_frame_us;
-    xcp_frame_t last_frame;
+    uint32_t frame_us;
+    xcp_frame_t frame;
     bool new_frame;
+
+    uint32_t mta; /* Master Target Address, used for memory access commands */
+    uint8_t mta_extension;
+    uint8_t upload_count;
+
+    bool block_upload_in_progress; /* unused for now */
 } xcp_session_t;
 
 /***************************************************************
@@ -65,9 +71,11 @@ static void process_new_frame(xcp_session_t *session);
 static void close_connection(xcp_session_t *session);
 
 static void pack_conn_response(xcp_frame_t *response);
-static void pack_disconn_response(xcp_frame_t *response);
 static void pack_get_status_response(xcp_frame_t *response);
+static void pack_generic_response(xcp_frame_t *response); /* generic OK response */
 static void pack_error_response(xcp_frame_t *response, uint8_t error_code);
+
+static void pack_upload_response(xcp_session_t *session, xcp_frame_t *response);
 
 /***************************************************************
 ** MARK: GLOBAL FUNCTIONS
@@ -131,9 +139,10 @@ void xcp_receive_frame(xcp_conn_type_t conn_type, xcp_conn_info_t *conn_info, xc
         {
             
             /* Update existing session */
-            sessions[i].last_frame_us = sys_micros();
-            memcpy(&sessions[i].last_frame, frame, sizeof(xcp_frame_t));
+            sessions[i].frame_us = sys_micros();
+            memcpy(&sessions[i].frame, frame, sizeof(xcp_frame_t));
             sessions[i].new_frame = true;
+            sessions[i].mta = 0;
 
             return;
         }
@@ -147,8 +156,8 @@ void xcp_receive_frame(xcp_conn_type_t conn_type, xcp_conn_info_t *conn_info, xc
         sessions[session_count].conn_type = conn_type;
         memcpy(&sessions[session_count].conn_info, conn_info, sizeof(xcp_conn_info_t));
 
-        sessions[session_count].last_frame_us = sys_micros();
-        memcpy(&sessions[session_count].last_frame, frame, sizeof(xcp_frame_t));
+        sessions[session_count].frame_us = sys_micros();
+        memcpy(&sessions[session_count].frame, frame, sizeof(xcp_frame_t));
         sessions[session_count].new_frame = true;
 
         session_count++;
@@ -161,7 +170,7 @@ void xcp_update()
 
     for (uint32_t i = 0; i < session_count; i++)
     {
-        if ((now_us - sessions[i].last_frame_us > XCP_TIMEOUT_US) || (sessions[i].state == XCP_SESSION_DISCONNECTED))
+        if ((now_us - sessions[i].frame_us > XCP_TIMEOUT_US) || (sessions[i].state == XCP_SESSION_DISCONNECTED))
         {
             eth_log("XCP client timed out or disconnected, closing connection");
             close_connection(&sessions[i]);
@@ -196,7 +205,7 @@ static void process_new_frame(xcp_session_t *session)
     {
         case XCP_SESSION_NONE:
         {
-            if (session->last_frame.pid == XCP_COMMAND_CONNECT)
+            if (session->frame.pid == XCP_COMMAND_CONNECT)
             {
                 session->state = XCP_SESSION_CONNECTED;
                 eth_log("XCP client connected");
@@ -209,11 +218,36 @@ static void process_new_frame(xcp_session_t *session)
 
         case XCP_SESSION_CONNECTED:
         {
-            switch (session->last_frame.pid)
+            switch (session->frame.pid)
             {
                 case XCP_COMMAND_GET_STATUS:
                 {
                     pack_get_status_response(&response_frame);
+                    handled = true;
+                } break;
+
+                case XCP_COMMAND_SET_MTA:
+                {
+                    /* data 0-1 reserved */
+
+                    session->mta_extension = session->frame.data[2];
+
+                    session->mta = 0;
+                    session->mta |= session->frame.data[3];
+                    session->mta |= ((uint32_t)session->frame.data[4]) << 8;
+                    session->mta |= ((uint32_t)session->frame.data[5]) << 16;
+                    session->mta |= ((uint32_t)session->frame.data[6]) << 24;
+
+                    pack_generic_response(&response_frame);
+                    handled = true;
+
+                } break;
+
+                case XCP_COMMAND_UPLOAD:
+                {
+                    session->upload_count = session->frame.data[0];
+
+                    pack_upload_response(session, &response_frame);
                     handled = true;
                 } break;
 
@@ -231,22 +265,23 @@ static void process_new_frame(xcp_session_t *session)
     }
 
     /* always allow disconnection */
-    if (session->last_frame.pid == XCP_COMMAND_DISCONNECT)
+    if (session->frame.pid == XCP_COMMAND_DISCONNECT)
     {
         session->state = XCP_SESSION_DISCONNECTED;
         eth_log("XCP client requested disconnect");
 
-        pack_disconn_response(&response_frame);
+        pack_generic_response(&response_frame);
         handled = true;
     }
 
     if (!handled)
     {
         /* if we get here, it's an unsupported message so error */
-        eth_log_u32("Invalid XCP PID", session->last_frame.pid);
+        eth_log_u32("Invalid XCP PID", session->frame.pid);
         eth_log_u32("For state", session->state);
 
         pack_error_response(&response_frame, 0x01); /* Generic error code, expand as needed */
+
     }
 
     response_handlers[session->conn_type](&session->conn_info, &response_frame);
@@ -272,13 +307,6 @@ static void pack_conn_response(xcp_frame_t *response)
     response->data[6] = 0x01; /* XCP TRANSPORT VERSION */
 }
 
-static void pack_disconn_response(xcp_frame_t *response)
-{
-    response->length = 2;
-    response->pid = XCP_RESPONSE_OK;
-    response->data[0] = 0x00; /* OK */
-}
-
 static void pack_get_status_response(xcp_frame_t *response)
 {
     response->length = 6;
@@ -296,4 +324,27 @@ static void pack_error_response(xcp_frame_t *response, uint8_t error_code)
     response->length = 2;
     response->pid = XCP_RESPONSE_ERROR;
     response->data[0] = error_code;
+}
+
+static void pack_generic_response(xcp_frame_t *response)
+{
+    response->length = 1;
+    response->pid = XCP_RESPONSE_OK;
+}
+
+static void pack_upload_response(xcp_session_t *session, xcp_frame_t *response)
+{
+    /* check MTA here */
+
+    response->length = 1 + session->upload_count;
+    if (response->length > XCP_MAX_FRAME_SIZE)
+    {
+        response->length = XCP_MAX_FRAME_SIZE;
+    }
+
+    response->pid = XCP_RESPONSE_OK;
+    for (uint8_t i = 0; i < response->length - 1; i++)
+    {
+        response->data[i] = 0xA;
+    }
 }

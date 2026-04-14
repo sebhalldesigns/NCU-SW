@@ -40,20 +40,75 @@
 
 /end IF_DATA
 
-/* At least one measurement so the block has something to show */
- /begin MEASUREMENT EngineSpeed "Engine speed in rpm"
-   VALUE
-   UWORD
-   CM_Rpm
-   0 0 0 8000
-   ECU_ADDRESS 0x20001000
- /end MEASUREMENT
 
- /begin COMPU_METHOD CM_Rpm "Linear"
-   LINEAR
-   "%8.0" 
-   1 0
- /end COMPU_METHOD
+  /begin CHARACTERISTIC 
+    /* Name                   */      bLedState
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
+    /* ECU Address            */      0x10000004
+    /* Record Layout          */      Record_BOOLEAN
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_logical
+    /* Lower Limit            */      0
+    /* Upper Limit            */      1
+  /end CHARACTERISTIC 
+
+  /begin MEASUREMENT 
+    /* Name                   */      bButtonState
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_logical
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      1
+    ECU_ADDRESS                       0x100001BC
+  /end MEASUREMENT 
+
+  /begin COMPU_METHOD
+    /* Name of CompuMethod    */      app_CM_logical
+    /* Long identifier        */      "Q = V"
+    /* Conversion Type        */      IDENTICAL
+    /* Format                 */      "%1.0"
+    /* Units                  */      ""
+  /end COMPU_METHOD
+
+  /begin  RECORD_LAYOUT Record_BOOLEAN
+    FNC_VALUES 1 UBYTE COLUMN_DIR DIRECT
+  /end  RECORD_LAYOUT 
+
+  /begin GROUP
+    /* Name                   */      app
+    /* Long identifier        */      "app"
+    /* Root                   */      ROOT
+    /begin SUB_GROUP
+      app_GPIO_Read
+      app_GPIO_Write
+    /end SUB_GROUP
+    /begin REF_CHARACTERISTIC
+      bLedState
+    /end REF_CHARACTERISTIC
+    /begin REF_MEASUREMENT
+      bButtonState
+    /end REF_MEASUREMENT
+  /end GROUP
+
+  /begin GROUP
+    /* Name                   */      app_GPIO_Read
+    /* Long identifier        */      "app/GPIO Read"
+    /begin REF_MEASUREMENT
+      bButtonState
+    /end REF_MEASUREMENT
+  /end GROUP
+
+  /begin GROUP
+    /* Name                   */      app_GPIO_Write
+    /* Long identifier        */      "app/GPIO Write"
+    /begin REF_MEASUREMENT
+      bButtonState
+    /end REF_MEASUREMENT
+  /end GROUP
+
 
 /end MODULE
 /end PROJECT

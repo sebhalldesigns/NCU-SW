@@ -4,9 +4,9 @@
         {
             "label": "flash-m7",
             "type": "shell",
-            "command": "C:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin\\STM32_Programmer_CLI.exe",
+            "command": "STM32_Programmer_CLI.exe",
             "args": [
-                "-c", "port=swd",
+                "-c", "port=swd", "freq=200",
                 "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",
                 "-v",
                 "-rst"
@@ -16,11 +16,10 @@
         {
             "label": "flash-m4",
             "type": "shell",
-            "command": "C:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin\\STM32_Programmer_CLI.exe",
+            "command": "STM32_Programmer_CLI.exe",
             "args": [
-                "-c", "port=swd",
-                //"-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
-                "-d", "${workspaceFolder}/app/app.elf",
+                "-c", "port=swd", "freq=200",
+                "-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
                 "-v",
                 "-rst"
             ],
@@ -29,9 +28,9 @@
         {
             "label": "flash-all",
             "type": "shell",
-            "command": "C:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin\\STM32_Programmer_CLI.exe",
+            "command": "STM32_Programmer_CLI.exe",
             "args": [
-                "-c", "port=swd",
+                "-c", "port=swd", "freq=200",
                 "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",
                 "-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
                 "-v",

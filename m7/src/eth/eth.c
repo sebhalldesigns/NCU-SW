@@ -135,6 +135,10 @@ bool eth_init()
     ip4_addr_set_zero(&netmask);
     ip4_addr_set_zero(&gw);
 
+    IP4_ADDR(&ipaddr, 192, 168, 1, 50);
+    IP4_ADDR(&netmask, 255, 255, 255, 0);
+    IP4_ADDR(&gw, 192, 168, 1, 1);
+
     /* Add network interface */
     netif_add(&eth_netif, &ipaddr, &netmask, &gw, NULL, ethernetif_init, ethernet_input);
 
@@ -266,8 +270,8 @@ static err_t ethernetif_init(struct netif *netif)
     netif->output     = etharp_output;
     netif->linkoutput = ethernetif_output;
 
-     /* ===================== RMII GPIO CONFIG ===================== */
-    /* All RMII pins: Alternate function mode (10), AF11, high speed (11), no pull (00) */
+    /* ===================== RMII GPIO CONFIG ===================== */
+    /* All RMII pins: alternate function mode, AF11, high speed, no pull. */
 
     /* --- PA1 (RMII_REF_CLK), PA2 (RMII_MDIO), PA7 (RMII_CRS_DV) --- */
     /* Mode: AF (10) for pins 1, 2, 7 */
@@ -286,37 +290,43 @@ static err_t ethernetif_init(struct netif *netif)
                     & ~(0xF << (1*4) | 0xF << (2*4) | 0xF << (7*4)))
                     | (11U << (1*4) | 11U << (2*4) | 11U << (7*4));
 
-    /* --- PB13 (RMII_TXD1) --- */
-    GPIOB->MODER  = (GPIOB->MODER  & ~(0x3 << (13*2))) | (0x2 << (13*2));
-    GPIOB->OSPEEDR |= (0x3 << (13*2));
-    GPIOB->PUPDR  &= ~(0x3 << (13*2));
-    /* PB13 is in AFRH (pins 8-15), index = pin - 8 */
-    GPIOB->AFR[1] = (GPIOB->AFR[1] & ~(0xF << ((13-8)*4))) | (11U << ((13-8)*4));
+    /* --- PB1 (RMII_MDC), PB11 (RMII_TX_EN), PB12 (RMII_TXD0), PB13 (RMII_TXD1) --- */
+    GPIOB->MODER = (GPIOB->MODER
+                & ~(0x3 << (1*2) | 0x3 << (11*2) | 0x3 << (12*2) | 0x3 << (13*2)))
+                | (0x2 << (1*2) | 0x2 << (11*2) | 0x2 << (12*2) | 0x2 << (13*2));
 
-    /* --- PC1 (RMII_MDC), PC4 (RMII_RXD0), PC5 (RMII_RXD1) --- */
+    GPIOB->OSPEEDR |= (0x3 << (1*2) | 0x3 << (11*2) | 0x3 << (12*2) | 0x3 << (13*2));
+    GPIOB->PUPDR   &= ~(0x3 << (1*2) | 0x3 << (11*2) | 0x3 << (12*2) | 0x3 << (13*2));
+
+    /* PB1 is in AFRL, PB11/12/13 are in AFRH. */
+    GPIOB->AFR[0] = (GPIOB->AFR[0] & ~(0xF << (1*4))) | (11U << (1*4));
+    GPIOB->AFR[1] = (GPIOB->AFR[1]
+                    & ~(0xF << ((11-8)*4) | 0xF << ((12-8)*4) | 0xF << ((13-8)*4)))
+                    | (11U << ((11-8)*4) | 11U << ((12-8)*4) | 11U << ((13-8)*4));
+
+    /* --- PC4 (RMII_RXD0), PC5 (RMII_RXD1) --- */
     GPIOC->MODER = (GPIOC->MODER
-                & ~(0x3 << (1*2) | 0x3 << (4*2) | 0x3 << (5*2)))
-                | (0x2 << (1*2) | 0x2 << (4*2) | 0x2 << (5*2));
+                & ~(0x3 << (4*2) | 0x3 << (5*2)))
+                | (0x2 << (4*2) | 0x2 << (5*2));
 
-    GPIOC->OSPEEDR |= (0x3 << (1*2) | 0x3 << (4*2) | 0x3 << (5*2));
-    GPIOC->PUPDR   &= ~(0x3 << (1*2) | 0x3 << (4*2) | 0x3 << (5*2));
+    GPIOC->OSPEEDR |= (0x3 << (4*2) | 0x3 << (5*2));
+    GPIOC->PUPDR   &= ~(0x3 << (4*2) | 0x3 << (5*2));
 
     GPIOC->AFR[0] = (GPIOC->AFR[0]
-                    & ~(0xF << (1*4) | 0xF << (4*4) | 0xF << (5*4)))
-                    | (11U << (1*4) | 11U << (4*4) | 11U << (5*4));
+                    & ~(0xF << (4*4) | 0xF << (5*4)))
+                    | (11U << (4*4) | 11U << (5*4));
 
-    /* --- PG11 (RMII_TX_EN), PG13 (RMII_TXD0) --- */
-    GPIOG->MODER = (GPIOG->MODER
-                & ~(0x3 << (11*2) | 0x3 << (13*2)))
-                | (0x2 << (11*2) | 0x2 << (13*2));
+    /* --- PA15 (PHY reset) --- */
+    GPIOA->MODER = (GPIOA->MODER & ~(0x3 << (15*2))) | (0x1 << (15*2));
+    GPIOA->OTYPER &= ~(0x1 << 15);
+    GPIOA->OSPEEDR |= (0x3 << (15*2));
+    GPIOA->PUPDR &= ~(0x3 << (15*2));
 
-    GPIOG->OSPEEDR |= (0x3 << (11*2) | 0x3 << (13*2));
-    GPIOG->PUPDR   &= ~(0x3 << (11*2) | 0x3 << (13*2));
-
-    /* PG11 and PG13 are in AFRH */
-    GPIOG->AFR[1] = (GPIOG->AFR[1]
-                    & ~(0xF << ((11-8)*4) | 0xF << ((13-8)*4)))
-                    | (11U << ((11-8)*4) | 11U << ((13-8)*4));
+    /* Hold PHY in reset briefly, then release it before any MDIO access. */
+    GPIOA->BSRR = (1U << (15 + 16));
+    for (volatile int i = 0; i < 100000; i++);
+    GPIOA->BSRR = (1U << 15);
+    for (volatile int i = 0; i < 100000; i++);
 
     /* Reset ETH MAC */
     RCC->AHB1RSTR |= RCC_AHB1RSTR_ETH1MACRST;
@@ -765,13 +775,13 @@ static void ethernetif_update_link_state()
             /* Link is up - apply negotiated mode */
             ethernetif_apply_link_mode();
             netif_set_link_up(&eth_netif);
-            dhcp_start(&eth_netif);
+            //dhcp_start(&eth_netif);
         }
         else
         {
             /* Link is down */
             netif_set_link_down(&eth_netif);
-            dhcp_stop(&eth_netif);
+            //dhcp_stop(&eth_netif);
         }
     }
 }

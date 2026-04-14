@@ -29,6 +29,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/times.h>
+#include <stdint.h>
+#include "eth/eth.h"
 //#include "uart/uart.h"
 
 /* Variables */
@@ -38,6 +40,18 @@ extern int __io_getchar(void) __attribute__((weak));
 
 char *__env[1] = { 0 };
 char **environ = __env;
+
+/* Default stdio backend: queue bytes for debug UDP flush in eth_poll(). */
+__attribute__((weak)) int __io_putchar(int ch)
+{
+  eth_log_putc_raw((uint8_t)ch);
+  return ch;
+}
+
+__attribute__((weak)) int __io_getchar(void)
+{
+  return -1;
+}
 
 
 /* Functions */

@@ -17,9 +17,6 @@
 
 #include "eth.h"
 
-#include <stdarg.h>
-#include <stdio.h>
-
 #include <lwip/init.h>
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
@@ -54,7 +51,8 @@
 #define ETH_TX_DESC_FL_MASK  0x7FFFU
 #define ETH_TX_WAIT_SPINS   1000000U
 #define ETH_LINK_CHECK_INTERVAL_MS 500U
-#define ETH_DBG_LINE_MAX  220U
+#define ETH_LOG_LINE_MAX  220U
+#define ETH_STDIO_RING_SIZE 1024U
 
 /***************************************************************
 ** MARK: TYPEDEFS
@@ -106,12 +104,14 @@ volatile int eth_packet_ready = 0;
 static struct udp_pcb *udp_pcb = NULL;
 static eth_udp_recv_callback_t udp_recv_callback = NULL;
 
-/* Dedicated UDP debug stream state */
-static struct udp_pcb *dbg_udp_pcb = NULL;
-static ip_addr_t dbg_dst_addr;
-static uint16_t dbg_dst_port = 0U;
-static bool dbg_enabled = false;
-static volatile uint32_t dbg_seq = 0U;
+/* Dedicated UDP logging stream state */
+static struct udp_pcb *log_udp_pcb = NULL;
+static ip_addr_t log_dst_addr;
+static uint16_t log_dst_port = 0U;
+static bool log_enabled = false;
+static volatile uint16_t stdio_head = 0U;
+static volatile uint16_t stdio_tail = 0U;
+static uint8_t stdio_ring[ETH_STDIO_RING_SIZE];
 
 /***************************************************************
 ** MARK: STATIC FUNCTION DEFS
@@ -124,6 +124,14 @@ static void ethernetif_service_dma();
 static bool ethernetif_read_phy(uint32_t reg, uint32_t *value);
 static void ethernetif_apply_link_mode();
 static void ethernetif_update_link_state();
+static eth_result_t eth_log_send(const uint8_t *data, uint16_t len);
+static void eth_log_write_prefix(void);
+static void eth_log_write_kv_sep(const char *label);
+static void eth_log_puts(const char *s);
+static void eth_log_put_u32(uint32_t value);
+static void eth_log_put_i32(int32_t value);
+static void eth_log_put_fixed3(uint32_t value);
+static void eth_log_stdio_flush(void);
 static void eth_udp_recv_handler(void *arg, struct udp_pcb *pcb, struct pbuf *p,
                                   const ip_addr_t *addr, uint16_t port);
 
@@ -183,17 +191,11 @@ void eth_poll()
 
     /* Process incoming frames */
     ethernetif_input(&eth_netif);
+    eth_log_stdio_flush();
     sys_check_timeouts();
-
-    /* DHCP state tracking */
-    
-    struct dhcp *dhcp = netif_dhcp_data(&eth_netif);
-    volatile uint8_t dhcp_state = (dhcp != NULL) ? dhcp->state : 0xFF;
-    volatile ip4_addr_t current_ip = eth_netif.ip_addr;
-    
 }
 
-int eth_udp_bind(uint16_t port, eth_udp_recv_callback_t recv_callback)
+eth_result_t eth_udp_bind(uint16_t port, eth_udp_recv_callback_t recv_callback)
 {
     /* Create UDP PCB if not already created */
     if (udp_pcb == NULL)
@@ -201,7 +203,7 @@ int eth_udp_bind(uint16_t port, eth_udp_recv_callback_t recv_callback)
         udp_pcb = udp_new();
         if (udp_pcb == NULL)
         {
-            return -1;  /* Failed to create PCB */
+            return ETH_RES_ERR;
         }
     }
 
@@ -212,32 +214,32 @@ int eth_udp_bind(uint16_t port, eth_udp_recv_callback_t recv_callback)
     err_t err = udp_bind(udp_pcb, IP_ADDR_ANY, port);
     if (err != ERR_OK)
     {
-        return -1;
+        return ETH_RES_ERR;
     }
 
     /* Register receive callback */
     udp_recv(udp_pcb, eth_udp_recv_handler, NULL);
 
-    return 0;  /* Success */
+    return ETH_RES_OK;
 }
 
-int eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *data, uint16_t len)
+eth_result_t eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *data, uint16_t len)
 {
     if (udp_pcb == NULL)
     {
-        return -1;  /* UDP not bound */
+        return ETH_RES_ERR;
     }
 
     if (data == NULL || len == 0)
     {
-        return -1;  /* Invalid data */
+        return ETH_RES_ERR;
     }
 
     /* Allocate pbuf */
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
     if (p == NULL)
     {
-        return -1;  /* Out of memory */
+        return ETH_RES_ERR;
     }
 
     /* Copy data into pbuf */
@@ -253,94 +255,97 @@ int eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *data, uint16
     /* Free pbuf (udp_sendto makes a copy) */
     pbuf_free(p);
 
-    return (err == ERR_OK) ? 0 : -1;
+    return (err == ERR_OK) ? ETH_RES_OK : ETH_RES_ERR;
 }
 
-bool eth_dbg_init(uint32_t dst_ip, uint16_t dst_port)
+bool eth_log_init(uint32_t dst_ip, uint16_t dst_port)
 {
-    if (dbg_udp_pcb != NULL)
+    if (log_udp_pcb != NULL)
     {
-        udp_remove(dbg_udp_pcb);
-        dbg_udp_pcb = NULL;
+        udp_remove(log_udp_pcb);
+        log_udp_pcb = NULL;
     }
 
-    dbg_udp_pcb = udp_new();
-    if (dbg_udp_pcb == NULL)
+    log_udp_pcb = udp_new();
+    if (log_udp_pcb == NULL)
     {
         return false;
     }
 
-    dbg_dst_addr.addr = dst_ip;
-    dbg_dst_port = dst_port;
-
-    dbg_enabled = true;
-    dbg_seq = 0U;
+    log_dst_addr.addr = dst_ip;
+    log_dst_port = dst_port;
+    log_enabled = true;
     return true;
 }
 
-int eth_dbg_send(const uint8_t *data, uint16_t len)
+void eth_log(const char *content)
 {
-    if ((!dbg_enabled) || (dbg_udp_pcb == NULL) || (data == NULL) || (len == 0U))
+    if ((!log_enabled) || (content == NULL))
     {
-        return -1;
+        return;
     }
 
-    struct pbuf *pkt = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
-    if (pkt == NULL)
-    {
-        return -1;
-    }
-
-    pbuf_take(pkt, data, len);
-    err_t err = udp_sendto(dbg_udp_pcb, pkt, &dbg_dst_addr, dbg_dst_port);
-    pbuf_free(pkt);
-    return (err == ERR_OK) ? 0 : -1;
+    eth_log_write_prefix();
+    eth_log_puts(content);
+    eth_log_puts("\r\n");
 }
 
-void eth_dbg_printf(const char *fmt, ...)
+void eth_log_u32(const char *label, uint32_t value)
 {
-    if ((!dbg_enabled) || (fmt == NULL))
+    if (!log_enabled)
     {
         return;
     }
 
-    uint32_t seq = dbg_seq++;
-    uint32_t ts_us = sys_micros();
+    eth_log_write_prefix();
+    eth_log_write_kv_sep((label != NULL) ? label : "u32");
+    eth_log_put_u32(value);
+    eth_log_puts("\r\n");
+}
 
-    char line[ETH_DBG_LINE_MAX];
-    int prefix = snprintf(line, sizeof(line), "[%010lu us][%06lu] ",
-                          (unsigned long)ts_us,
-                          (unsigned long)seq);
-    if (prefix < 0)
+void eth_log_i32(const char *label, int32_t value)
+{
+    if (!log_enabled)
     {
         return;
     }
 
-    uint32_t p = (uint32_t)prefix;
-    if (p >= (ETH_DBG_LINE_MAX - 3U))
+    eth_log_write_prefix();
+    eth_log_write_kv_sep((label != NULL) ? label : "i32");
+    eth_log_put_i32(value);
+    eth_log_puts("\r\n");
+}
+
+void eth_log_bool(const char *label, bool value)
+{
+    if (!log_enabled)
     {
         return;
     }
 
-    va_list args;
-    va_start(args, fmt);
-    int body = vsnprintf(&line[p], ETH_DBG_LINE_MAX - p - 2U, fmt, args);
-    va_end(args);
-    if (body < 0)
+    eth_log_write_prefix();
+    eth_log_write_kv_sep((label != NULL) ? label : "bool");
+    eth_log_puts(value ? "true" : "false");
+    eth_log_puts("\r\n");
+}
+
+void eth_log_putc_raw(uint8_t ch)
+{
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+
+    uint16_t next = (uint16_t)((stdio_head + 1U) % ETH_STDIO_RING_SIZE);
+    if (next == stdio_tail)
     {
-        return;
+        /* Drop when queue is full to keep ISR path non-blocking. */
+    }
+    else
+    {
+        stdio_ring[stdio_head] = ch;
+        stdio_head = next;
     }
 
-    uint32_t used = p + (uint32_t)body;
-    if (used > (ETH_DBG_LINE_MAX - 3U))
-    {
-        used = ETH_DBG_LINE_MAX - 3U;
-    }
-    line[used++] = '\r';
-    line[used++] = '\n';
-    line[used] = '\0';
-
-    (void)eth_dbg_send((const uint8_t *)line, (uint16_t)used);
+    __set_PRIMASK(primask);
 }
 
 /***************************************************************
@@ -905,5 +910,151 @@ static void eth_udp_recv_handler(void *arg, struct udp_pcb *pcb, struct pbuf *p,
     }
 
     pbuf_free(p);
+}
+
+static eth_result_t eth_log_send(const uint8_t *data, uint16_t len)
+{
+    if ((!log_enabled) || (log_udp_pcb == NULL) || (data == NULL) || (len == 0U))
+    {
+        return ETH_RES_ERR;
+    }
+
+    struct pbuf *pkt = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
+    if (pkt == NULL)
+    {
+        return ETH_RES_ERR;
+    }
+
+    pbuf_take(pkt, data, len);
+    err_t err = udp_sendto(log_udp_pcb, pkt, &log_dst_addr, log_dst_port);
+    pbuf_free(pkt);
+    return (err == ERR_OK) ? ETH_RES_OK : ETH_RES_ERR;
+}
+
+static void eth_log_write_prefix(void)
+{
+    uint32_t total_us = sys_micros();
+    uint32_t seconds = total_us / 1000000U;
+    uint32_t micros = total_us % 1000000U;
+    uint32_t millis = micros / 1000U;
+    uint32_t micro_rem = micros % 1000U;
+
+    eth_log_puts("[NCU ");
+    eth_log_put_u32(seconds);
+    eth_log_putc_raw('.');
+    eth_log_put_fixed3(millis);
+    eth_log_putc_raw('.');
+    eth_log_put_fixed3(micro_rem);
+    eth_log_puts("] ");
+}
+
+static void eth_log_write_kv_sep(const char *label)
+{
+    eth_log_puts((label != NULL) ? label : "log");
+    eth_log_puts(": ");
+}
+
+static void eth_log_stdio_flush(void)
+{
+    if ((!log_enabled) || (log_udp_pcb == NULL))
+    {
+        return;
+    }
+
+    uint8_t line[ETH_LOG_LINE_MAX];
+    uint16_t line_len = 0U;
+    uint32_t drained = 0U;
+
+    while (drained < ETH_STDIO_RING_SIZE)
+    {
+        uint8_t ch = 0U;
+        bool have_char = false;
+
+        uint32_t primask = __get_PRIMASK();
+        __disable_irq();
+        if (stdio_tail != stdio_head)
+        {
+            ch = stdio_ring[stdio_tail];
+            stdio_tail = (uint16_t)((stdio_tail + 1U) % ETH_STDIO_RING_SIZE);
+            have_char = true;
+        }
+        __set_PRIMASK(primask);
+
+        if (!have_char)
+        {
+            break;
+        }
+
+        drained++;
+
+        if (ch == '\r')
+        {
+            continue;
+        }
+
+        line[line_len++] = ch;
+        if ((ch == '\n') || (line_len >= ETH_LOG_LINE_MAX))
+        {
+            (void)eth_log_send(line, line_len);
+            line_len = 0U;
+        }
+    }
+
+    if (line_len > 0U)
+    {
+        (void)eth_log_send(line, line_len);
+    }
+}
+
+static void eth_log_puts(const char *s)
+{
+    if (s == NULL)
+    {
+        return;
+    }
+
+    while (*s != '\0')
+    {
+        eth_log_putc_raw((uint8_t)*s++);
+    }
+}
+
+static void eth_log_put_u32(uint32_t value)
+{
+    char tmp[10];
+    uint32_t n = 0U;
+
+    do
+    {
+        tmp[n++] = (char)('0' + (value % 10U));
+        value /= 10U;
+    } while ((value > 0U) && (n < sizeof(tmp)));
+
+    while (n > 0U)
+    {
+        n--;
+        eth_log_putc_raw((uint8_t)tmp[n]);
+    }
+}
+
+static void eth_log_put_i32(int32_t value)
+{
+    if (value < 0)
+    {
+        eth_log_putc_raw('-');
+        uint32_t mag = (uint32_t)(-(value + 1)) + 1U;
+        eth_log_put_u32(mag);
+        return;
+    }
+
+    eth_log_put_u32((uint32_t)value);
+}
+
+static void eth_log_put_fixed3(uint32_t value)
+{
+    uint32_t v = value % 1000U;
+    eth_log_putc_raw((uint8_t)('0' + ((v / 100U) % 10U)));
+    eth_log_putc_raw((uint8_t)('0' + ((v / 10U) % 10U)));
+    eth_log_putc_raw((uint8_t)('0' + (v % 10U)));
 }
 

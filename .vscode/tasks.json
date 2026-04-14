@@ -10,6 +10,7 @@
                 "-d", "${workspaceFolder}/build/Release/m7/ncu-m7.elf",
                 "-rst"
             ],
+            "dependsOn": "CMake: build",
             "problemMatcher": []
         },
         {
@@ -21,6 +22,7 @@
                 "-d", "${workspaceFolder}/build/Release/m4/ncu-m4.elf",
                 "-rst"
             ],
+            "dependsOn": "CMake: build",
             "problemMatcher": []
         },
         {

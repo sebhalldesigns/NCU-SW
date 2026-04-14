@@ -707,27 +707,27 @@ static void eth_ws_err_cb(void *arg, err_t err)
 ** MARK: PUBLIC API
 ***************************************************************/
 
-int eth_ws_init(uint16_t port, eth_ws_recv_callback_t recv_callback)
+eth_result_t eth_ws_init(uint16_t port, eth_ws_recv_callback_t recv_callback)
 {
     ws_recv_callback = recv_callback;
     ws_listen_port = (port == 0U) ? ETH_WS_DEFAULT_PORT : port;
 
     if (ws_listener_pcb != NULL)
     {
-        return 0;
+        return ETH_RES_OK;
     }
 
     ws_listener_pcb = tcp_new();
     if (ws_listener_pcb == NULL)
     {
-        return -1;
+        return ETH_RES_ERR;
     }
 
     if (tcp_bind(ws_listener_pcb, IP_ADDR_ANY, ws_listen_port) != ERR_OK)
     {
         tcp_abort(ws_listener_pcb);
         ws_listener_pcb = NULL;
-        return -1;
+        return ETH_RES_ERR;
     }
 
     struct tcp_pcb *listen_pcb = tcp_listen_with_backlog(ws_listener_pcb, 1U);
@@ -735,14 +735,14 @@ int eth_ws_init(uint16_t port, eth_ws_recv_callback_t recv_callback)
     {
         tcp_abort(ws_listener_pcb);
         ws_listener_pcb = NULL;
-        return -1;
+        return ETH_RES_ERR;
     }
 
     ws_listener_pcb = listen_pcb;
     tcp_arg(ws_listener_pcb, NULL);
     tcp_accept(ws_listener_pcb, eth_ws_accept_cb);
 
-    return 0;
+    return ETH_RES_OK;
 }
 
 bool eth_ws_is_connected(void)
@@ -750,13 +750,13 @@ bool eth_ws_is_connected(void)
     return (ws_client_pcb != NULL) && (ws_state == ETH_WS_STATE_OPEN);
 }
 
-int eth_ws_send_text(const uint8_t *data, uint16_t len)
+eth_result_t eth_ws_send_text(const uint8_t *data, uint16_t len)
 {
-    return eth_ws_send_frame(WS_OPCODE_TEXT, data, len);
+    return (eth_ws_send_frame(WS_OPCODE_TEXT, data, len) == 0) ? ETH_RES_OK : ETH_RES_ERR;
 }
 
-int eth_ws_send_binary(const uint8_t *data, uint16_t len)
+eth_result_t eth_ws_send_binary(const uint8_t *data, uint16_t len)
 {
-    return eth_ws_send_frame(WS_OPCODE_BINARY, data, len);
+    return (eth_ws_send_frame(WS_OPCODE_BINARY, data, len) == 0) ? ETH_RES_OK : ETH_RES_ERR;
 }
  

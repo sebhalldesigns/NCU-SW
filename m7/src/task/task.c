@@ -16,7 +16,6 @@
 ***************************************************************/
 
 #include "task.h"
-#include "stm32h745xx.h"
 
 /***************************************************************
 ** MARK: CONSTANTS & MACROS
@@ -60,14 +59,22 @@ bool task_init(uint32_t a_us, uint32_t b_us)
     RCC->APB2ENR |= RCC_APB2ENR_TIM16EN | RCC_APB2ENR_TIM17EN;
     (void)RCC->APB2ENR;
     
+    TIM16->CR1 = 0;
     TIM16->PSC = 199;
     TIM16->ARR = a_us - 1;
+    /* Latch PSC/ARR before starting to avoid a fast first period. */
+    TIM16->EGR = TIM_EGR_UG;
+    TIM16->SR = 0;
     TIM16->DIER |= TIM_DIER_UIE;
     NVIC_SetPriority(TIM16_IRQn, TASK_A_PRIORITY);
     NVIC_EnableIRQ(TIM16_IRQn);
 
+    TIM17->CR1 = 0;
     TIM17->PSC = 199;
     TIM17->ARR = b_us - 1;
+    /* Latch PSC/ARR before starting to avoid a fast first period. */
+    TIM17->EGR = TIM_EGR_UG;
+    TIM17->SR = 0;
     TIM17->DIER |= TIM_DIER_UIE;
     NVIC_SetPriority(TIM17_IRQn, TASK_B_PRIORITY);
     NVIC_EnableIRQ(TIM17_IRQn);

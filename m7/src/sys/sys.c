@@ -126,6 +126,9 @@ bool sys_init()
     TIM2->CR1 = 0;
     TIM2->PSC  = 199; /* 1MHz */
     TIM2->ARR  = 0xFFFFFFFF; /* max ARR for free-running */
+    /* Latch PSC/ARR immediately (otherwise PSC applies only after first update). */
+    TIM2->EGR = TIM_EGR_UG;
+    TIM2->SR = 0;
     TIM2->CNT = 0;
 
     /* start timer */

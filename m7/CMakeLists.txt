@@ -9,6 +9,8 @@ set(SOURCES
     
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sys/sys.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/task/task.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/xcp/xcp.c
+
     ${CMAKE_CURRENT_SOURCE_DIR}/src/eth/eth.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/eth/eth_ws.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/eth/http_custom_fs.c

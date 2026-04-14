@@ -49,9 +49,11 @@ typedef struct
 
     uint32_t mta; /* Master Target Address, used for memory access commands */
     uint8_t mta_extension;
-    uint8_t upload_count;
+    uint8_t upload_size;
+    uint8_t download_size;
 
     bool block_upload_in_progress; /* unused for now */
+    bool block_download_in_progress; /* unused for now */
 } xcp_session_t;
 
 /***************************************************************
@@ -245,11 +247,37 @@ static void process_new_frame(xcp_session_t *session)
 
                 case XCP_COMMAND_UPLOAD:
                 {
-                    session->upload_count = session->frame.data[0];
+                    session->upload_size = session->frame.data[0];
 
                     pack_upload_response(session, &response_frame);
                     handled = true;
                 } break;
+
+                case XCP_COMMAND_DOWNLOAD:
+                {
+                    session->download_size = session->frame.data[0];
+
+                    uint32_t data = 0x0;
+                    if (session->download_size <= 4)
+                    {
+                        for (uint8_t i = 0; i < session->download_size; i++)
+                        {
+                            data |= ((uint32_t)session->frame.data[1 + i]) << (i * 8);
+                        }
+                    }
+
+                    eth_log_u32("XCP DOWNLOAD", data);
+
+                    pack_generic_response(&response_frame);
+                    handled = true;
+                } break;
+
+                case XCP_COMMAND_SYNCH:
+                {
+                    pack_error_response(&response_frame, XCP_ERR_CMD_SYNCH);
+                    handled = true;
+                } break;
+
 
                 default:
                 {
@@ -299,6 +327,11 @@ static void pack_conn_response(xcp_frame_t *response)
     response->length = 8;
     response->pid = XCP_RESPONSE_OK;
     response->data[0] = 0x00; /* RESOURCE */
+    response->data[0] |= 1 << XCP_CONN_RESP_RESOURCE_CAL_BIT; /* CAL resource available */
+    response->data[0] |= 0 << XCP_CONN_RESP_RESOURCE_DAQ_BIT; /* DAQ resource NOT available */
+    response->data[0] |= 0 << XCP_CONN_RESP_RESOURCE_STIM_BIT; /* STIM resource NOT available */
+    response->data[0] |= 0 << XCP_CONN_RESP_RESOURCE_PGM_BIT; /* PGM resource NOT available */
+
     response->data[1] = 0x80; /* COMM_MODE_BASIC, Little Endian */
     response->data[2] = XCP_MAX_FRAME_SIZE; /* MAX_CTO */
     response->data[3] = XCP_MAX_FRAME_SIZE; /* MAX_DTO low byte */
@@ -336,7 +369,7 @@ static void pack_upload_response(xcp_session_t *session, xcp_frame_t *response)
 {
     /* check MTA here */
 
-    response->length = 1 + session->upload_count;
+    response->length = 1 + session->upload_size;
     if (response->length > XCP_MAX_FRAME_SIZE)
     {
         response->length = XCP_MAX_FRAME_SIZE;

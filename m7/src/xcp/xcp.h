@@ -46,7 +46,14 @@
 #define XCP_COMMAND_SHORT_UPLOAD    (0xF4)
 #define XCP_COMMAND_BUILD_CHECKSUM  (0xF3)
 #define XCP_COMMAND_TRANSPORT_LAYER_CMD (0xF2)
-#define XCP_COMMAND_USER_CMD        (0xF1) /* User-defined commands start from 0x00 */
+#define XCP_COMMAND_USER_CMD        (0xF1)
+
+#define XCP_COMMAND_DOWNLOAD        (0xF0) 
+#define XCP_COMMAND_DOWNLOAD_NEXT   (0xEF)
+#define XCP_COMMAND_DOWNLOAD_MAX    (0xEE)  
+#define XCP_COMMAND_SHORT_DOWNLOAD  (0xED) 
+#define XCP_COMMAND_MODIFY_BITS     (0xEC) 
+
 #define XCP_COMMAND_GET_VERSION     (0xC0)
 #define XCP_COMMAND_GET_VERSION_ALT (0x00)
 
@@ -58,6 +65,38 @@
 #define XCP_RESPONSE_ERROR          (0xFE)
 #define XCP_RESPONSE_EV             (0xFD)
 #define XCP_RESPONSE_SERV           (0xFC)
+
+/* CONNECT BITS */
+
+#define XCP_CONN_RESP_RESOURCE_CAL_BIT  (0x00)
+#define XCP_CONN_RESP_RESOURCE_DAQ_BIT  (0x02)
+#define XCP_CONN_RESP_RESOURCE_STIM_BIT (0x03)
+#define XCP_CONN_RESP_RESOURCE_PGM_BIT  (0x04)
+
+/* 
+** XCP ERROR CODES
+*/
+
+#define XCP_ERR_CMD_BUSY            (0x10)
+#define XCP_ERR_DAQ_ACTIVE          (0x11)
+#define XCP_ERR_PGM_ACTIVE          (0x12)
+#define XCP_ERR_CMD_UNKNOWN         (0x20)
+#define XCP_ERR_CMD_SYNTAX          (0x21)
+#define XCP_ERR_OUT_OF_RANGE        (0x22)
+#define XCP_ERR_WRITE_PROTECTED     (0x23)
+#define XCP_ERR_ACCESS_DENIED       (0x24)
+#define XCP_ERR_ACCESS_LOCKED       (0x25)
+#define XCP_ERR_PAGE_NOT_VALID      (0x26)
+#define XCP_ERR_MODE_NOT_VALID      (0x27)
+#define XCP_ERR_SEGMENT_NOT_VALID   (0x28)
+#define XCP_ERR_SEQUENCE            (0x29)
+#define XCP_ERR_DAQ_CONFIG          (0x2A)
+#define XCP_ERR_MEMORY_OVERFLOW     (0x30)
+#define XCP_ERR_GENERIC             (0x31)
+#define XCP_ERR_VERIFY              (0x32)
+#define XCP_ERR_CMD_SYNCH           (0xFE)
+
+
 
 /***************************************************************
 ** MARK: TYPEDEFS

@@ -5,4 +5,6 @@ connect(xcp_ch);
 
 eng = readMeasurement(xcp_ch, "bButtonState")
 
+writeCharacteristic(xcp_ch, "bLedState", uint8(1))
+
 disconnect(xcp_ch);

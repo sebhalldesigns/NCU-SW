@@ -17,6 +17,7 @@ Therefore, the cores are assigned the following roles:
 ### Timers
 
 - TIM1: LSDs
+- TIM2: System microsecond timer
 
 - TIM4: HSDs
 

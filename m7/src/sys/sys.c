@@ -115,7 +115,21 @@ bool sys_init()
 
     (void)RCC->AHB4ENR;
 
-    SysTick_Config(200000);
+    /* 1ms tick for lwIP sys_now(): 400MHz / 400000 = 1kHz */
+    SysTick_Config(400000);
+
+    RCC->APB1LENR |= RCC_APB1LENR_TIM2EN;
+    (void)RCC->APB1LENR;
+
+    
+    /* TIM2 setup - system us counter */
+    TIM2->CR1 = 0;
+    TIM2->PSC  = 199; /* 1MHz */
+    TIM2->ARR  = 0xFFFFFFFF; /* max ARR for free-running */
+    TIM2->CNT = 0;
+
+    /* start timer */
+    TIM2->CR1 |= TIM_CR1_CEN; 
 
     return true;
 }
@@ -123,6 +137,11 @@ bool sys_init()
 uint32_t sys_now()
 {
     return ms_ticks;
+}
+
+uint32_t sys_micros()
+{
+    return TIM2->CNT;
 }
 
 void SysTick_Handler(void)

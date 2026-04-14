@@ -1,6 +1,6 @@
 
 #include <sys/sys.h>
-#if 0
+#include <task/task.h>
 #include <eth/eth.h>
 
 #define UDP_ECHO_PORT 5005U
@@ -52,22 +52,24 @@ static void ws_echo_callback(const uint8_t *data, uint16_t len, bool is_text)
     }
 }
 
-void TIM2_IRQHandler(void)
+void task_a(uint32_t time_us)
 {
-    if (TIM2->SR & TIM_SR_UIF)
-    {
-        TIM2->SR &= ~TIM_SR_UIF;
+    
+}
 
-        led_state ^= 1;
-        if (led_state)
-        {
-            GPIOE->BSRR = (1 << (15 + 16));  /* set PE15 low — LED on (active low) */
-        }
-        else
-        {
-            GPIOE->BSRR = (1 << 15);          /* set PE15 high — LED off */
-        }
+void task_b(uint32_t time_us)
+{
+    
+}
+
+void task_c(uint32_t time_us)
+{
+    if (eth_packet_ready)
+    {
+        eth_packet_ready = 0;
     }
+
+    eth_poll();
 }
 
 int main(void)
@@ -77,38 +79,11 @@ int main(void)
     eth_udp_bind(UDP_ECHO_PORT, udp_echo_callback);
     eth_ws_init(WS_PORT, ws_echo_callback);
 
-    /* Enable clocks for GPIOE and TIM2 */
-    RCC->AHB4ENR |= RCC_AHB4ENR_GPIOEEN;
-    RCC->APB1LENR |= RCC_APB1LENR_TIM2EN;
+    task_init(500, 5000); /* Task A at 500us, Task B at 5ms */
+    
+    task_register(M7_TASK_A, task_a);
+    task_register(M7_TASK_B, task_b);
+    task_register(M7_TASK_C, task_c);
 
-    /* GPIOE PE15 setup */
-    GPIOE->MODER  &= ~(0x3U << (15 * 2));  /* clear mode bits */
-    GPIOE->MODER  |=  (0x1U << (15 * 2));  /* output mode */
-    GPIOE->OTYPER &= ~(0x1U << 15);        /* push-pull */
-    GPIOE->OSPEEDR &= ~(0x3U << (15 * 2)); /* low speed */
-    GPIOE->PUPDR  &= ~(0x3U << (15 * 2));  /* no pull */
-
-    /* Start with LED off (PE15 high = LED off for active low) */
-    GPIOE->BSRR = (1 << 15);
-
-    /* TIM2 setup — 64MHz HSI on reset */
-    /* 64MHz / (63999+1) / (999+1) = 1Hz -> 500ms per toggle */
-    TIM2->PSC  = 63999;
-    TIM2->ARR  = 499;
-    TIM2->DIER |= TIM_DIER_UIE;
-
-    NVIC_SetPriority(TIM2_IRQn, 1);
-    NVIC_EnableIRQ(TIM2_IRQn);
-
-    TIM2->CR1 |= TIM_CR1_CEN;
-
-    while (1)
-    {
-        if (eth_packet_ready)
-        {
-            eth_packet_ready = 0;
-        }
-
-        eth_poll();
-    }
+    task_run();
 }

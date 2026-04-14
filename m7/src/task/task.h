@@ -2,30 +2,24 @@
 **
 ** NCU Header File
 **
-** File         :  sys.h
-** Module       :  sys
+** File         :  task.h
+** Module       :  task
 ** Author       :  SH
-** Created      :  2026-03-28 (YYYY-MM-DD)
+** Created      :  2026-04-14 (YYYY-MM-DD)
 ** License      :  MIT
-** Description  :  NCU System Interface
+** Description  :  NCU Task Interface
 **
 ***************************************************************/
 
-#ifndef SYS_H
-#define SYS_H
+#ifndef TASK_H
+#define TASK_H
 
 /***************************************************************
 ** MARK: INCLUDES
 ***************************************************************/
 
 #include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define STM32H745xx
-#include <stm32h7xx.h>
-#include <stm32h745xx.h>
+#include <sys/sys.h>
 
 /***************************************************************
 ** MARK: CONSTANTS & MACROS
@@ -35,12 +29,21 @@
 ** MARK: TYPEDEFS
 ***************************************************************/
 
+typedef void (*task_fn_t)(uint32_t time_us);
+
+typedef enum
+{
+    M7_TASK_A = 0,
+    M7_TASK_B = 1,
+    M7_TASK_C = 2
+} task_id_t;
+
 /***************************************************************
 ** MARK: FUNCTION DEFS
 ***************************************************************/
 
-bool sys_init();
-uint32_t sys_now();
-uint32_t sys_micros();
+bool task_init(uint32_t a_us, uint32_t b_us);
+void task_register(task_id_t task_id, task_fn_t fn);
+void task_run();
 
-#endif /* SYS_H */
+#endif /* TASK_H */

@@ -1,3 +1,5 @@
+include_guard(GLOBAL)
+
 set(SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/syscall.c
     ${CMAKE_CURRENT_LIST_DIR}/src/sysmem.c
@@ -44,7 +46,9 @@ set(NCUKIT_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 include_directories(${INCLUDES})
 
-add_library(ncukit STATIC ${SOURCES})
+if(NOT TARGET ncukit)
+    add_library(ncukit STATIC ${SOURCES})
+endif()
 
 function(toolchain_target_hook target_name)
 

@@ -10,6 +10,10 @@ function ncu_stf_select_callback(hDlg, hSrc)
         i_set_cfg_param(hDlg, hSrc, "GenerateSampleERTMain", "off");
         i_set_cfg_param(hDlg, hSrc, "Toolchain", "NCU STM32 CMake");
         i_set_cfg_param(hDlg, hSrc, "PostCodeGenCommand", "ncu_build_hook");
+        i_set_cfg_param(hDlg, hSrc, "ExtMode", "on");
+        i_set_cfg_param(hDlg, hSrc, "ExtModeTransport", "0");
+        i_set_cfg_param(hDlg, hSrc, "ExtModeMexFile", "ext_xcp");
+        i_set_cfg_param(hDlg, hSrc, "ExtModeIntrfLevel", "Level2 - Open");
 
     catch ME
         warning("NCU:STFSelectCallbackFailed", ...

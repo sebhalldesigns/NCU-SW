@@ -196,44 +196,46 @@ endif()
 # Common STM32CubeIDE GNU Tools for STM32 install locations (Windows).
 file(GLOB _STM32_GCC_GLOB
   "C:/ST/STM32CubeIDE_*/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.*/tools/bin"
-  "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeIDE_*/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.*/tools/bin")
+  "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeIDE_*/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.*/tools/bin"
+  "$ENV{LOCALAPPDATA}/STM32Cube/bundles/gnu-tools-for-stm32/*/bin")
 if(_STM32_GCC_GLOB)
   list(APPEND _ARM_GCC_HINTS ${_STM32_GCC_GLOB})
 endif()
+list(REMOVE_DUPLICATES _ARM_GCC_HINTS)
 set(FLAGS                           "-fdata-sections -ffunction-sections -Wl,--gc-sections -Wno-comment")
 set(CPP_FLAGS                       "${FLAGS} -fno-rtti -fno-exceptions -fno-threadsafe-statics")
 
 set(CMAKE_C_FLAGS                   ${FLAGS})
 set(CMAKE_CXX_FLAGS                 ${CPP_FLAGS})
 
-find_program(_ARM_GCC   NAMES arm-none-eabi-gcc   HINTS ${_ARM_GCC_HINTS})
-find_program(_ARM_GXX   NAMES arm-none-eabi-g++   HINTS ${_ARM_GCC_HINTS})
-find_program(_ARM_OBJCOPY NAMES arm-none-eabi-objcopy HINTS ${_ARM_GCC_HINTS})
-find_program(_ARM_SIZE  NAMES arm-none-eabi-size  HINTS ${_ARM_GCC_HINTS})
+find_program(_ARM_GCC      NAMES arm-none-eabi-gcc      HINTS ${_ARM_GCC_HINTS})
+find_program(_ARM_GXX      NAMES arm-none-eabi-g++      HINTS ${_ARM_GCC_HINTS})
+find_program(_ARM_OBJCOPY  NAMES arm-none-eabi-objcopy  HINTS ${_ARM_GCC_HINTS})
+find_program(_ARM_SIZE     NAMES arm-none-eabi-size     HINTS ${_ARM_GCC_HINTS})
 
 if(_ARM_GCC)
-  set(CMAKE_C_COMPILER ${_ARM_GCC})
+  set(CMAKE_C_COMPILER "${_ARM_GCC}" CACHE FILEPATH "" FORCE)
 else()
-  set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
+  set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc CACHE STRING "" FORCE)
 endif()
-set(CMAKE_ASM_COMPILER ${CMAKE_C_COMPILER})
+set(CMAKE_ASM_COMPILER "${CMAKE_C_COMPILER}" CACHE FILEPATH "" FORCE)
 
 if(_ARM_GXX)
-  set(CMAKE_CXX_COMPILER ${_ARM_GXX})
+  set(CMAKE_CXX_COMPILER "${_ARM_GXX}" CACHE FILEPATH "" FORCE)
 else()
-  set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
+  set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++ CACHE STRING "" FORCE)
 endif()
 
 if(_ARM_OBJCOPY)
-  set(CMAKE_OBJCOPY ${_ARM_OBJCOPY})
+  set(CMAKE_OBJCOPY "${_ARM_OBJCOPY}" CACHE FILEPATH "" FORCE)
 else()
-  set(CMAKE_OBJCOPY ${TOOLCHAIN_PREFIX}objcopy)
+  set(CMAKE_OBJCOPY ${TOOLCHAIN_PREFIX}objcopy CACHE STRING "" FORCE)
 endif()
 
 if(_ARM_SIZE)
-  set(CMAKE_SIZE ${_ARM_SIZE})
+  set(CMAKE_SIZE "${_ARM_SIZE}" CACHE FILEPATH "" FORCE)
 else()
-  set(CMAKE_SIZE ${TOOLCHAIN_PREFIX}size)
+  set(CMAKE_SIZE ${TOOLCHAIN_PREFIX}size CACHE STRING "" FORCE)
 endif()
 
 set(CMAKE_EXECUTABLE_SUFFIX_ASM     ".elf")
@@ -241,5 +243,4 @@ set(CMAKE_EXECUTABLE_SUFFIX_C       ".elf")
 set(CMAKE_EXECUTABLE_SUFFIX_CXX     ".elf")
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-
-include(${CMAKE_CURRENT_LIST_DIR}/../ncukit.cmake)
+set(CMAKE_PROJECT_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/ncu_project_include.cmake" CACHE FILEPATH "" FORCE)

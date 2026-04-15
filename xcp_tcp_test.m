@@ -1,5 +1,5 @@
 a2l_obj = xcpA2L('test.a2l');
-xcp_ch = xcpChannel(a2l_obj, 'UDP', '192.168.1.50', 5005);
+xcp_ch = xcpChannel(a2l_obj, 'TCP', '192.168.1.50', 5005);
 
 if ~isempty(a2l_obj.Warnings)
     disp('A2L parser warnings:');

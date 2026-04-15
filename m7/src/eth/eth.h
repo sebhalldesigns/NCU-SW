@@ -34,6 +34,8 @@ typedef void (*eth_udp_recv_callback_t)(const uint8_t *data, uint16_t len, uint3
 typedef void (*eth_ws_recv_callback_t)(const uint8_t *data, uint16_t len, bool is_text);
 /* TCP receive callback: called when stream data arrives. */
 typedef void (*eth_tcp_recv_callback_t)(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port);
+/* TCP disconnect callback: called when the connected client disconnects. */
+typedef void (*eth_tcp_disconnect_callback_t)(uint32_t src_ip, uint16_t src_port);
 
 /* Common Ethernet API status code. */
 typedef enum
@@ -75,7 +77,7 @@ eth_result_t eth_ws_send_text(const uint8_t *data, uint16_t len);
 eth_result_t eth_ws_send_binary(const uint8_t *data, uint16_t len);
 
 /* TCP API (server mode, raw lwIP TCP) */
-eth_result_t eth_tcp_init(uint16_t port, eth_tcp_recv_callback_t recv_callback);
+eth_result_t eth_tcp_init(uint16_t port, eth_tcp_recv_callback_t recv_callback, eth_tcp_disconnect_callback_t disconnect_callback);
 bool eth_tcp_is_connected(void);
 eth_result_t eth_tcp_send(const uint8_t *data, uint16_t len);
 

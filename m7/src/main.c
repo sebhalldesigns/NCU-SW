@@ -9,8 +9,8 @@
 #include <eth/eth.h>
 #include <lwip/ip4_addr.h>
 
-#define UDP_ECHO_PORT 5005U
-#define TCP_TEST_PORT 5006U
+#define XCP_PORT 5005U
+#define UDP_PORT 5006U
 #define WS_PORT 81U
 #define LOG_PORT 50000U
 #define XCP_MAX_UDP_PACKET_SIZE (XCP_IP_HEADER_SIZE + XCP_MAX_FRAME_SIZE)
@@ -31,44 +31,29 @@ static void udp_echo_callback(const uint8_t *data, uint16_t len, uint32_t src_ip
 {
     eth_log("UDP RX");
 
-    if (len <= XCP_MAX_UDP_PACKET_SIZE && len >= (XCP_IP_HEADER_SIZE + 1U))
+    if ((data == NULL) || (len == 0U))
     {
-        char hex_buf[HEX_BUF_SIZE];
-        uint8_t frame_len = (uint8_t)(data[0] | (data[1] << 8));
-        if (frame_len == 0U || frame_len > XCP_MAX_FRAME_SIZE || (uint16_t)frame_len != (len - XCP_IP_HEADER_SIZE))
-        {
-            eth_log("UDP RX invalid XCP length");
-            return;
-        }
-
-        for (uint16_t i = 0; i < len; i++)
-        {
-            uint8_t byte = data[i];
-            hex_buf[i * 3] = hex_chars[byte >> 4];
-            hex_buf[i * 3 + 1] = hex_chars[byte & 0x0F];
-            hex_buf[i * 3 + 2] = ' ';
-        }
-
-        hex_buf[len * 3] = '\0';
-        eth_log(hex_buf);
-
-        
-        static xcp_conn_info_t conn_info = {0}; 
-        conn_info.ip.remote_ip = src_ip;
-        conn_info.ip.remote_port = src_port;
-        conn_info.ip.counter = data[2] | (data[3] << 8);
-
-        static xcp_frame_t frame;
-        frame.length = frame_len;
-        frame.pid = data[4];
-        for (uint8_t i = 0; i < (uint8_t)(frame.length - 1U); i++)
-        {
-            frame.data[i] = data[5 + i];
-        }
-
-        xcp_receive_frame(XCP_CONN_TYPE_ETH_UDP, &conn_info, &frame);
+        return;
     }
 
+    char hex_buf[HEX_BUF_SIZE];
+    uint16_t copy_len = (len > XCP_MAX_UDP_PACKET_SIZE) ? XCP_MAX_UDP_PACKET_SIZE : len;
+    for (uint16_t i = 0; i < copy_len; i++)
+    {
+        uint8_t byte = data[i];
+        hex_buf[i * 3] = hex_chars[byte >> 4];
+        hex_buf[i * 3 + 1] = hex_chars[byte & 0x0F];
+        hex_buf[i * 3 + 2] = ' ';
+    }
+
+    hex_buf[copy_len * 3] = '\0';
+    eth_log(hex_buf);
+
+    if (eth_udp_send(src_ip, src_port, data, len) != ETH_RES_OK)
+    {
+        udp_tx_failures++;
+        eth_log("UDP TX failed");
+    }
 }
 
 static void ws_echo_callback(const uint8_t *data, uint16_t len, bool is_text)
@@ -96,11 +81,8 @@ static void ws_echo_callback(const uint8_t *data, uint16_t len, bool is_text)
     }
 }
 
-static void tcp_test_callback(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port)
+static void tcp_xcp_callback(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port)
 {
-    (void)src_ip;
-    (void)src_port;
-
     tcp_rx_packets++;
     eth_log("TCP RX");
 
@@ -121,12 +103,41 @@ static void tcp_test_callback(const uint8_t *data, uint16_t len, uint32_t src_ip
     hex_buf[copy_len * 3] = '\0';
     eth_log(hex_buf);
 
-    static const uint8_t reply[] = "NCU TCP test\r\n";
-    if (eth_tcp_send(reply, (uint16_t)(sizeof(reply) - 1U)) != ETH_RES_OK)
+    if (len <= XCP_MAX_UDP_PACKET_SIZE && len >= (XCP_IP_HEADER_SIZE + 1U))
     {
-        tcp_tx_failures++;
-        eth_log("TCP TX failed");
+        uint8_t frame_len = (uint8_t)(data[0] | (data[1] << 8));
+        if (frame_len == 0U || frame_len > XCP_MAX_FRAME_SIZE || (uint16_t)frame_len != (len - XCP_IP_HEADER_SIZE))
+        {
+            eth_log("TCP RX invalid XCP length");
+            return;
+        }
+
+        static xcp_conn_info_t conn_info = {0};
+        conn_info.ip.remote_ip = src_ip;
+        conn_info.ip.remote_port = src_port;
+        conn_info.ip.counter = data[2] | (data[3] << 8);
+
+        static xcp_frame_t frame;
+        frame.length = frame_len;
+        frame.pid = data[4];
+        for (uint8_t i = 0; i < (uint8_t)(frame.length - 1U); i++)
+        {
+            frame.data[i] = data[5 + i];
+        }
+
+        xcp_receive_frame(XCP_CONN_TYPE_ETH_TCP, &conn_info, &frame);
     }
+}
+
+static void tcp_xcp_disconnect_callback(uint32_t src_ip, uint16_t src_port)
+{
+    xcp_conn_info_t conn_info = {0};
+    conn_info.ip.remote_ip = src_ip;
+    conn_info.ip.remote_port = src_port;
+    conn_info.ip.counter = 0U;
+
+    eth_log("TCP XCP disconnect");
+    xcp_disconnect_connection(XCP_CONN_TYPE_ETH_TCP, &conn_info);
 }
 
 void task_a(uint32_t time_us)
@@ -213,12 +224,60 @@ void xcp_eth_udp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *respo
     eth_udp_send(conn_info->ip.remote_ip, conn_info->ip.remote_port, response, (uint16_t)(response_frame->length + XCP_IP_HEADER_SIZE));
 }
 
+void xcp_eth_tcp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *response_frame)
+{
+    if ((conn_info == NULL) || (response_frame == NULL))
+    {
+        return;
+    }
+
+    if (response_frame->length == 0U || response_frame->length > XCP_MAX_FRAME_SIZE)
+    {
+        eth_log("TCP TX invalid XCP length");
+        return;
+    }
+
+    static uint8_t response[XCP_MAX_FRAME_SIZE + XCP_IP_HEADER_SIZE];
+    char hex_buf[HEX_BUF_SIZE];
+
+    response[0] = response_frame->length & 0xFF;
+    response[1] = (response_frame->length >> 8) & 0xFF;
+
+    response[2] = conn_info->ip.counter & 0xFF;
+    response[3] = (conn_info->ip.counter >> 8) & 0xFF;
+
+    response[4] = response_frame->pid;
+
+    for (uint8_t i = 0; i < (uint8_t)(response_frame->length - 1U); i++)
+    {
+        response[5 + i] = response_frame->data[i];
+    }
+
+    for (uint16_t i = 0; i < response_frame->length + XCP_IP_HEADER_SIZE; i++)
+    {
+        uint8_t byte = response[i];
+        hex_buf[i * 3] = hex_chars[byte >> 4];
+        hex_buf[i * 3 + 1] = hex_chars[byte & 0x0F];
+        hex_buf[i * 3 + 2] = ' ';
+    }
+
+    hex_buf[response_frame->length * 3 + XCP_IP_HEADER_SIZE * 3] = '\0';
+    eth_log("TCP TX");
+    eth_log(hex_buf);
+
+    if (eth_tcp_send(response, (uint16_t)(response_frame->length + XCP_IP_HEADER_SIZE)) != ETH_RES_OK)
+    {
+        tcp_tx_failures++;
+        eth_log("TCP TX failed");
+    }
+}
+
 int main(void)
 {
     sys_init();
     can_init_ok = can_init();
     xcp_init();
-    xcp_add_response_handler(XCP_CONN_TYPE_ETH_UDP, xcp_eth_udp_response_handler);
+    xcp_add_response_handler(XCP_CONN_TYPE_ETH_TCP, xcp_eth_tcp_response_handler);
 
     /* Enable clocks for GPIOE */
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOEEN;
@@ -239,12 +298,12 @@ int main(void)
     IP4_ADDR(&log_ip4, 192, 168, 1, 51);
     (void)eth_log_init(log_ip4.addr, LOG_PORT);
 
-    eth_udp_bind(UDP_ECHO_PORT, udp_echo_callback);
-    eth_tcp_init(TCP_TEST_PORT, tcp_test_callback);
+    eth_udp_bind(UDP_PORT, udp_echo_callback);
+    eth_tcp_init(XCP_PORT, tcp_xcp_callback, tcp_xcp_disconnect_callback);
     eth_ws_init(WS_PORT, ws_echo_callback);
 
     eth_log("NCU Initialization Complete");
-    eth_log_u32("TCP test port", TCP_TEST_PORT);
+    eth_log_u32("XCP port", XCP_PORT);
     eth_log(can_init_ok ? "FDCAN1/FDCAN2 test transmit enabled at 500 kbit/s" : "FDCAN init failed");
 
     task_init(500, 5000); /* Task A at 500us, Task B at 1s */

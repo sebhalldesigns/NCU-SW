@@ -164,6 +164,7 @@ void xcp_receive_frame(xcp_conn_type_t conn_type, xcp_conn_info_t *conn_info, xc
             switch (conn_type)
             {
                 case XCP_CONN_TYPE_ETH_UDP:
+                case XCP_CONN_TYPE_ETH_TCP:
                     match = (sessions[i].conn_info.ip.remote_ip == conn_info->ip.remote_ip) &&
                             (sessions[i].conn_info.ip.remote_port == conn_info->ip.remote_port);
                     break;
@@ -209,6 +210,52 @@ void xcp_receive_frame(xcp_conn_type_t conn_type, xcp_conn_info_t *conn_info, xc
         sessions[session_count].new_frame = true;
 
         session_count++;
+    }
+}
+
+void xcp_disconnect_connection(xcp_conn_type_t conn_type, xcp_conn_info_t *conn_info)
+{
+    if (conn_info == NULL)
+    {
+        return;
+    }
+
+    for (uint32_t i = 0; i < session_count; i++)
+    {
+        bool match = false;
+
+        if (sessions[i].conn_type != conn_type)
+        {
+            continue;
+        }
+
+        switch (conn_type)
+        {
+            case XCP_CONN_TYPE_ETH_UDP:
+            case XCP_CONN_TYPE_ETH_TCP:
+                match = (sessions[i].conn_info.ip.remote_ip == conn_info->ip.remote_ip) &&
+                        (sessions[i].conn_info.ip.remote_port == conn_info->ip.remote_port);
+                break;
+
+            case XCP_CONN_TYPE_CAN:
+                match = (sessions[i].conn_info.can.cto_id == conn_info->can.cto_id) &&
+                        (sessions[i].conn_info.can.dto_id == conn_info->can.dto_id) &&
+                        (sessions[i].conn_info.can.bus == conn_info->can.bus);
+                break;
+
+            case XCP_CONN_TYPE_ETH_WEB_SOCKET:
+                match = true;
+                break;
+
+            default:
+                break;
+        }
+
+        if (match)
+        {
+            sessions[i].state = XCP_SESSION_DISCONNECTED;
+            return;
+        }
     }
 }
 
@@ -643,9 +690,12 @@ static void process_new_frame(xcp_session_t *session)
 
 static void close_connection(xcp_session_t *session)
 {
+    if (session == NULL)
+    {
+        return;
+    }
 
-    
-
+    memset(session, 0, sizeof(*session));
 }
 
 static void pack_conn_response(xcp_frame_t *response)

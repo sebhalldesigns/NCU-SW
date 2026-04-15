@@ -110,7 +110,9 @@ static eth_udp_recv_callback_t udp_recv_callback = NULL;
 static struct tcp_pcb *tcp_listener_pcb = NULL;
 static struct tcp_pcb *tcp_client_pcb = NULL;
 static eth_tcp_recv_callback_t tcp_recv_callback = NULL;
+static eth_tcp_disconnect_callback_t tcp_disconnect_callback = NULL;
 static uint16_t tcp_client_port = 0U;
+static uint32_t tcp_client_ip = 0U;
 static uint8_t tcp_rx_buffer[ETH_TCP_RX_BUFFER_SIZE];
 static uint16_t tcp_rx_len = 0U;
 
@@ -274,9 +276,10 @@ eth_result_t eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *dat
     return (err == ERR_OK) ? ETH_RES_OK : ETH_RES_ERR;
 }
 
-eth_result_t eth_tcp_init(uint16_t port, eth_tcp_recv_callback_t recv_callback)
+eth_result_t eth_tcp_init(uint16_t port, eth_tcp_recv_callback_t recv_callback, eth_tcp_disconnect_callback_t disconnect_callback)
 {
     tcp_recv_callback = recv_callback;
+    tcp_disconnect_callback = disconnect_callback;
 
     if (tcp_listener_pcb != NULL)
     {
@@ -1013,6 +1016,7 @@ static err_t eth_tcp_accept_cb(void *arg, struct tcp_pcb *newpcb, err_t err)
     tcp_client_pcb = newpcb;
     tcp_rx_len = 0U;
     tcp_client_port = newpcb->remote_port;
+    tcp_client_ip = newpcb->remote_ip.addr;
 
     tcp_arg(newpcb, NULL);
     tcp_recv(newpcb, eth_tcp_recv_cb);
@@ -1087,6 +1091,11 @@ static void eth_tcp_err_cb(void *arg, err_t err)
     (void)arg;
     (void)err;
     tcp_client_pcb = NULL;
+    if (tcp_disconnect_callback != NULL)
+    {
+        tcp_disconnect_callback(tcp_client_ip, tcp_client_port);
+    }
+    tcp_client_ip = 0U;
     tcp_client_port = 0U;
     tcp_rx_len = 0U;
     eth_log("TCP client aborted");
@@ -1094,6 +1103,9 @@ static void eth_tcp_err_cb(void *arg, err_t err)
 
 static void eth_tcp_close_client(void)
 {
+    uint32_t remote_ip = tcp_client_ip;
+    uint16_t remote_port = tcp_client_port;
+
     if (tcp_client_pcb != NULL)
     {
         struct tcp_pcb *pcb = tcp_client_pcb;
@@ -1110,8 +1122,14 @@ static void eth_tcp_close_client(void)
     }
 
     tcp_client_pcb = NULL;
+    tcp_client_ip = 0U;
     tcp_client_port = 0U;
     tcp_rx_len = 0U;
+
+    if (tcp_disconnect_callback != NULL)
+    {
+        tcp_disconnect_callback(remote_ip, remote_port);
+    }
 }
 
 static eth_result_t eth_log_send(const uint8_t *data, uint16_t len)

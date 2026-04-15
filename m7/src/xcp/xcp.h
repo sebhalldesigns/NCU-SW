@@ -149,6 +149,7 @@ typedef enum
 {
     XCP_CONN_TYPE_CAN,
     XCP_CONN_TYPE_ETH_UDP,
+    XCP_CONN_TYPE_ETH_TCP,
     XCP_CONN_TYPE_ETH_WEB_SOCKET,
     XCP_CONN_TYPE_MAX
 } xcp_conn_type_t;
@@ -192,6 +193,7 @@ void xcp_add_response_handler(xcp_conn_type_t conn_type, xcp_response_handler_t 
 
 /* Process a frame */
 void xcp_receive_frame(xcp_conn_type_t conn_type, xcp_conn_info_t *conn_info, xcp_frame_t *frame);
+void xcp_disconnect_connection(xcp_conn_type_t conn_type, xcp_conn_info_t *conn_info);
 
 void xcp_update(void);
 

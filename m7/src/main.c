@@ -10,6 +10,7 @@
 #include <lwip/ip4_addr.h>
 
 #define UDP_ECHO_PORT 5005U
+#define TCP_TEST_PORT 5006U
 #define WS_PORT 81U
 #define LOG_PORT 50000U
 #define XCP_MAX_UDP_PACKET_SIZE (XCP_IP_HEADER_SIZE + XCP_MAX_FRAME_SIZE)
@@ -18,6 +19,8 @@
 volatile uint8_t led_state = 0;
 volatile uint32_t udp_rx_packets = 0U;
 volatile uint32_t udp_tx_failures = 0U;
+volatile uint32_t tcp_rx_packets = 0U;
+volatile uint32_t tcp_tx_failures = 0U;
 volatile uint32_t ws_rx_packets = 0U;
 volatile uint32_t ws_tx_failures = 0U;
 static bool can_init_ok = false;
@@ -90,6 +93,39 @@ static void ws_echo_callback(const uint8_t *data, uint16_t len, bool is_text)
         {
             ws_tx_failures++;
         }
+    }
+}
+
+static void tcp_test_callback(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port)
+{
+    (void)src_ip;
+    (void)src_port;
+
+    tcp_rx_packets++;
+    eth_log("TCP RX");
+
+    if ((data == NULL) || (len == 0U))
+    {
+        return;
+    }
+
+    char hex_buf[HEX_BUF_SIZE];
+    uint16_t copy_len = (len > XCP_MAX_UDP_PACKET_SIZE) ? XCP_MAX_UDP_PACKET_SIZE : len;
+    for (uint16_t i = 0; i < copy_len; i++)
+    {
+        uint8_t byte = data[i];
+        hex_buf[i * 3] = hex_chars[byte >> 4];
+        hex_buf[i * 3 + 1] = hex_chars[byte & 0x0F];
+        hex_buf[i * 3 + 2] = ' ';
+    }
+    hex_buf[copy_len * 3] = '\0';
+    eth_log(hex_buf);
+
+    static const uint8_t reply[] = "NCU TCP test\r\n";
+    if (eth_tcp_send(reply, (uint16_t)(sizeof(reply) - 1U)) != ETH_RES_OK)
+    {
+        tcp_tx_failures++;
+        eth_log("TCP TX failed");
     }
 }
 
@@ -204,9 +240,11 @@ int main(void)
     (void)eth_log_init(log_ip4.addr, LOG_PORT);
 
     eth_udp_bind(UDP_ECHO_PORT, udp_echo_callback);
+    eth_tcp_init(TCP_TEST_PORT, tcp_test_callback);
     eth_ws_init(WS_PORT, ws_echo_callback);
 
     eth_log("NCU Initialization Complete");
+    eth_log_u32("TCP test port", TCP_TEST_PORT);
     eth_log(can_init_ok ? "FDCAN1/FDCAN2 test transmit enabled at 500 kbit/s" : "FDCAN init failed");
 
     task_init(500, 5000); /* Task A at 500us, Task B at 1s */

@@ -25,6 +25,7 @@
 #include <lwip/dhcp.h>
 #include <lwip/err.h>
 #include <lwip/udp.h>
+#include <lwip/tcp.h>
 #include <netif/ethernet.h>
 #include <lwip/apps/httpd.h>
 
@@ -53,6 +54,7 @@
 #define ETH_LINK_CHECK_INTERVAL_MS 500U
 #define ETH_LOG_LINE_MAX  220U
 #define ETH_STDIO_RING_SIZE 1024U
+#define ETH_TCP_RX_BUFFER_SIZE 1024U
 
 /***************************************************************
 ** MARK: TYPEDEFS
@@ -104,6 +106,14 @@ volatile int eth_packet_ready = 0;
 static struct udp_pcb *udp_pcb = NULL;
 static eth_udp_recv_callback_t udp_recv_callback = NULL;
 
+/* TCP server support */
+static struct tcp_pcb *tcp_listener_pcb = NULL;
+static struct tcp_pcb *tcp_client_pcb = NULL;
+static eth_tcp_recv_callback_t tcp_recv_callback = NULL;
+static uint16_t tcp_client_port = 0U;
+static uint8_t tcp_rx_buffer[ETH_TCP_RX_BUFFER_SIZE];
+static uint16_t tcp_rx_len = 0U;
+
 /* Dedicated UDP logging stream state */
 static struct udp_pcb *log_udp_pcb = NULL;
 static ip_addr_t log_dst_addr;
@@ -134,6 +144,12 @@ static void eth_log_put_fixed3(uint32_t value);
 static void eth_log_stdio_flush(void);
 static void eth_udp_recv_handler(void *arg, struct udp_pcb *pcb, struct pbuf *p,
                                   const ip_addr_t *addr, uint16_t port);
+static void eth_log_ip4(const char *label, uint32_t addr);
+static void eth_tcp_close_client(void);
+static err_t eth_tcp_accept_cb(void *arg, struct tcp_pcb *newpcb, err_t err);
+static err_t eth_tcp_recv_cb(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
+static err_t eth_tcp_poll_cb(void *arg, struct tcp_pcb *tpcb);
+static void eth_tcp_err_cb(void *arg, err_t err);
 
 /***************************************************************
 ** MARK: GLOBAL FUNCTIONS
@@ -256,6 +272,73 @@ eth_result_t eth_udp_send(uint32_t dst_ip, uint16_t dst_port, const uint8_t *dat
     pbuf_free(p);
 
     return (err == ERR_OK) ? ETH_RES_OK : ETH_RES_ERR;
+}
+
+eth_result_t eth_tcp_init(uint16_t port, eth_tcp_recv_callback_t recv_callback)
+{
+    tcp_recv_callback = recv_callback;
+
+    if (tcp_listener_pcb != NULL)
+    {
+        return ETH_RES_OK;
+    }
+
+    tcp_listener_pcb = tcp_new();
+    if (tcp_listener_pcb == NULL)
+    {
+        return ETH_RES_ERR;
+    }
+
+    if (tcp_bind(tcp_listener_pcb, IP_ADDR_ANY, port) != ERR_OK)
+    {
+        tcp_abort(tcp_listener_pcb);
+        tcp_listener_pcb = NULL;
+        return ETH_RES_ERR;
+    }
+
+    struct tcp_pcb *listen_pcb = tcp_listen_with_backlog(tcp_listener_pcb, 1U);
+    if (listen_pcb == NULL)
+    {
+        tcp_abort(tcp_listener_pcb);
+        tcp_listener_pcb = NULL;
+        return ETH_RES_ERR;
+    }
+
+    tcp_listener_pcb = listen_pcb;
+    tcp_arg(tcp_listener_pcb, NULL);
+    tcp_accept(tcp_listener_pcb, eth_tcp_accept_cb);
+
+    return ETH_RES_OK;
+}
+
+bool eth_tcp_is_connected(void)
+{
+    return tcp_client_pcb != NULL;
+}
+
+eth_result_t eth_tcp_send(const uint8_t *data, uint16_t len)
+{
+    if ((tcp_client_pcb == NULL) || (data == NULL) || (len == 0U))
+    {
+        return ETH_RES_ERR;
+    }
+
+    if (tcp_sndbuf(tcp_client_pcb) < len)
+    {
+        return ETH_RES_ERR;
+    }
+
+    if (tcp_write(tcp_client_pcb, data, len, TCP_WRITE_FLAG_COPY) != ERR_OK)
+    {
+        return ETH_RES_ERR;
+    }
+
+    if (tcp_output(tcp_client_pcb) != ERR_OK)
+    {
+        return ETH_RES_ERR;
+    }
+
+    return ETH_RES_OK;
 }
 
 bool eth_log_init(uint32_t dst_ip, uint16_t dst_port)
@@ -912,6 +995,125 @@ static void eth_udp_recv_handler(void *arg, struct udp_pcb *pcb, struct pbuf *p,
     pbuf_free(p);
 }
 
+static err_t eth_tcp_accept_cb(void *arg, struct tcp_pcb *newpcb, err_t err)
+{
+    (void)arg;
+
+    if ((err != ERR_OK) || (newpcb == NULL))
+    {
+        return ERR_VAL;
+    }
+
+    if (tcp_client_pcb != NULL)
+    {
+        tcp_abort(newpcb);
+        return ERR_ABRT;
+    }
+
+    tcp_client_pcb = newpcb;
+    tcp_rx_len = 0U;
+    tcp_client_port = newpcb->remote_port;
+
+    tcp_arg(newpcb, NULL);
+    tcp_recv(newpcb, eth_tcp_recv_cb);
+    tcp_poll(newpcb, eth_tcp_poll_cb, 4U);
+    tcp_err(newpcb, eth_tcp_err_cb);
+
+    eth_log("TCP client connected");
+    eth_log_ip4("TCP client IP", newpcb->remote_ip.addr);
+    eth_log_u32("TCP client port", newpcb->remote_port);
+
+    return ERR_OK;
+}
+
+static err_t eth_tcp_recv_cb(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err)
+{
+    (void)arg;
+
+    if ((err != ERR_OK) || (tpcb != tcp_client_pcb))
+    {
+        if (p != NULL)
+        {
+            pbuf_free(p);
+        }
+        eth_tcp_close_client();
+        return ERR_OK;
+    }
+
+    if (p == NULL)
+    {
+        eth_log("TCP client disconnected");
+        eth_tcp_close_client();
+        return ERR_OK;
+    }
+
+    tcp_recved(tpcb, p->tot_len);
+
+    for (struct pbuf *q = p; q != NULL; q = q->next)
+    {
+        uint16_t space = (uint16_t)(ETH_TCP_RX_BUFFER_SIZE - tcp_rx_len);
+        if (q->len > space)
+        {
+            eth_log("TCP RX buffer overflow");
+            pbuf_free(p);
+            eth_tcp_close_client();
+            return ERR_OK;
+        }
+
+        memcpy(&tcp_rx_buffer[tcp_rx_len], q->payload, q->len);
+        tcp_rx_len = (uint16_t)(tcp_rx_len + q->len);
+
+        if (tcp_recv_callback != NULL)
+        {
+            tcp_recv_callback((const uint8_t *)q->payload, q->len, tpcb->remote_ip.addr, tpcb->remote_port);
+        }
+    }
+
+    pbuf_free(p);
+    tcp_rx_len = 0U;
+
+    return ERR_OK;
+}
+
+static err_t eth_tcp_poll_cb(void *arg, struct tcp_pcb *tpcb)
+{
+    (void)arg;
+    (void)tpcb;
+    return ERR_OK;
+}
+
+static void eth_tcp_err_cb(void *arg, err_t err)
+{
+    (void)arg;
+    (void)err;
+    tcp_client_pcb = NULL;
+    tcp_client_port = 0U;
+    tcp_rx_len = 0U;
+    eth_log("TCP client aborted");
+}
+
+static void eth_tcp_close_client(void)
+{
+    if (tcp_client_pcb != NULL)
+    {
+        struct tcp_pcb *pcb = tcp_client_pcb;
+        tcp_arg(pcb, NULL);
+        tcp_recv(pcb, NULL);
+        tcp_sent(pcb, NULL);
+        tcp_poll(pcb, NULL, 0);
+        tcp_err(pcb, NULL);
+
+        if (tcp_close(pcb) != ERR_OK)
+        {
+            tcp_abort(pcb);
+        }
+    }
+
+    tcp_client_pcb = NULL;
+    tcp_client_port = 0U;
+    tcp_rx_len = 0U;
+}
+
 static eth_result_t eth_log_send(const uint8_t *data, uint16_t len)
 {
     if ((!log_enabled) || (log_udp_pcb == NULL) || (data == NULL) || (len == 0U))
@@ -952,6 +1154,25 @@ static void eth_log_write_kv_sep(const char *label)
 {
     eth_log_puts((label != NULL) ? label : "log");
     eth_log_puts(": ");
+}
+
+static void eth_log_ip4(const char *label, uint32_t addr)
+{
+    uint32_t a = addr & 0xFFU;
+    uint32_t b = (addr >> 8) & 0xFFU;
+    uint32_t c = (addr >> 16) & 0xFFU;
+    uint32_t d = (addr >> 24) & 0xFFU;
+
+    eth_log_write_prefix();
+    eth_log_write_kv_sep((label != NULL) ? label : "ip4");
+    eth_log_put_u32(a);
+    eth_log_putc_raw('.');
+    eth_log_put_u32(b);
+    eth_log_putc_raw('.');
+    eth_log_put_u32(c);
+    eth_log_putc_raw('.');
+    eth_log_put_u32(d);
+    eth_log_puts("\r\n");
 }
 
 static void eth_log_stdio_flush(void)

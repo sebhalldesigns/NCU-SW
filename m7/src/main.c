@@ -103,6 +103,16 @@ void task_b(uint32_t time_us)
     {
         last_log_time_us = time_us;
         eth_log_u32("TASK B", time_us);
+
+        led_state ^= 1;
+        if (led_state)
+        {
+            GPIOE->BSRR = (1 << (15 + 16));  /* set PE15 low — LED on (active low) */
+        }
+        else
+        {
+            GPIOE->BSRR = (1 << 15);          /* set PE15 high — LED off */
+        }
     }
     
 }
@@ -170,6 +180,19 @@ int main(void)
     sys_init();
     xcp_init();
     xcp_add_response_handler(XCP_CONN_TYPE_ETH_UDP, xcp_eth_udp_response_handler);
+
+    /* Enable clocks for GPIOE */
+    RCC->AHB4ENR |= RCC_AHB4ENR_GPIOEEN;
+
+    /* GPIOE PE15 setup */
+    GPIOE->MODER  &= ~(0x3U << (15 * 2));  /* clear mode bits */
+    GPIOE->MODER  |=  (0x1U << (15 * 2));  /* output mode */
+    GPIOE->OTYPER &= ~(0x1U << 15);        /* push-pull */
+    GPIOE->OSPEEDR &= ~(0x3U << (15 * 2)); /* low speed */
+    GPIOE->PUPDR  &= ~(0x3U << (15 * 2));  /* no pull */
+
+    /* Start with LED off (PE15 high = LED off for active low) */
+    GPIOE->BSRR = (1 << 15);
 
     eth_init();
 

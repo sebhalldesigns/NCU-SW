@@ -330,6 +330,25 @@ static void process_new_frame(xcp_session_t *session)
                     handled = true;
                 } break;
 
+                case XCP_COMMAND_SHORT_UPLOAD:
+                {
+                    session->upload_size = session->frame.data[0];
+
+                    /* data[1] reserved */
+                    
+                    session->mta_extension = session->frame.data[2];
+
+                    session->mta = 0;
+                    session->mta |= session->frame.data[3];
+                    session->mta |= ((uint32_t)session->frame.data[4]) << 8;
+                    session->mta |= ((uint32_t)session->frame.data[5]) << 16;
+                    session->mta |= ((uint32_t)session->frame.data[6]) << 24;
+
+                    pack_upload_response(session, &response_frame);
+                    handled = true;
+
+                } break;
+
                 case XCP_COMMAND_DOWNLOAD:
                 {
                     session->download_size = session->frame.data[0];

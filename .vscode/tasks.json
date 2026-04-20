@@ -26,6 +26,18 @@
             "problemMatcher": []
         },
         {
+            "label": "flash-app",
+            "type": "shell",
+            "command": "STM32_Programmer_CLI.exe",
+            "args": [
+                "-c", "port=swd", "freq=200",
+                "-d", "${workspaceFolder}/app/app_ncu_rtw/build/app.elf",
+                "-rst"
+            ],
+            "dependsOn": "CMake: build",
+            "problemMatcher": []
+        },
+        {
             "label": "flash-all",
             "type": "shell",
             "command": "STM32_Programmer_CLI.exe",

@@ -153,6 +153,7 @@ void task_b(uint32_t time_us)
         last_log_time_us = time_us;
         eth_log_u32("TASK B", time_us);
 
+        #if 0
         led_state ^= 1;
         if (led_state)
         {
@@ -162,6 +163,7 @@ void task_b(uint32_t time_us)
         {
             GPIOE->BSRR = (1 << 15);          /* set PE15 high — LED off */
         }
+        #endif
     }
     
 }
@@ -279,6 +281,7 @@ int main(void)
     xcp_init();
     xcp_add_response_handler(XCP_CONN_TYPE_ETH_TCP, xcp_eth_tcp_response_handler);
 
+    #if 0
     /* Enable clocks for GPIOE */
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOEEN;
 
@@ -291,6 +294,7 @@ int main(void)
 
     /* Start with LED off (PE15 high = LED off for active low) */
     GPIOE->BSRR = (1 << 15);
+    #endif
 
     eth_init();
 

@@ -12,12 +12,12 @@
     #include <stm32h7xx.h>
 #endif
 
-#define GPIO_PIN_LED1 0U
-#define GPIO_PIN_LED2 1U
-#define GPIO_PIN_LED3 2U
-#define GPIO_PIN_BUTTON 3U
+#define GPIO_PIN_GPIO0 0U /* PA4 */
+#define GPIO_PIN_GPIO1 1U /* PA5 */
+#define GPIO_PIN_GPIO2 2U /* PA0 */
+#define GPIO_PIN_GPIO3 3U /* PA1 */
+#define GPIO_PIN_STATUS_LED 4U /* PE15 */
 
-void gpio_init(uint8_t pin, bool input);
 void gpio_write(uint8_t pin, bool value);
 bool gpio_read(uint8_t pin);
 

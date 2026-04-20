@@ -29,14 +29,16 @@ function addedObjects = ncu_register_target(varargin)
     baseLangImplId = "ARM Compatible-ARM Cortex";
     externalModeName = "NCU External Mode";
     communicationInterfaceName = "NCU TCP Interface";
-    executionToolName = "NCU Placeholder Execution Tool";
+    executionToolName = "NCU Execution Service";
+    executionToolImplementationName = "NCU Execution Tool Implementation";
     tcpConnectionName = "NCU XCP TCP Connection";
 
     existingProcessor = i_get_or_empty("Processor", processorId);
     existingBoard = i_get_or_empty("Board", boardName);
     existingExternalMode = i_get_or_empty("ExternalMode", externalModeName);
     existingCommunicationInterface = i_get_or_empty("CommunicationInterface", communicationInterfaceName);
-    existingExecutionTool = i_get_or_empty("SystemCommandExecutionTool", executionToolName);
+    existingExecutionToolImplementation = i_get_or_empty("APIImplementation", executionToolImplementationName);
+    existingExecutionTool = i_get_or_empty("ExecutionService", executionToolName);
     existingTCPConnection = i_get_or_empty("TargetConnection", tcpConnectionName);
 
     if isempty(existingProcessor)
@@ -118,18 +120,35 @@ function addedObjects = ncu_register_target(varargin)
         target.update(existingBoard);
     end
 
+    if isempty(existingExecutionToolImplementation)
+        executionToolImplementation = i_create_execution_tool_api_implementation(executionToolImplementationName);
+        addedExecutionToolImplementation = target.add(executionToolImplementation, ...
+            UserInstall = opts.UserInstall, ...
+            SuppressOutput = opts.SuppressOutput);
+        if isempty(addedExecutionToolImplementation)
+            existingExecutionToolImplementation = i_get_or_empty("APIImplementation", executionToolImplementationName);
+        else
+            existingExecutionToolImplementation = addedExecutionToolImplementation(1);
+        end
+    elseif opts.Force
+        existingExecutionToolImplementation.API = target.get("API", "ExecutionTool");
+        existingExecutionToolImplementation.BuildDependencies = i_create_execution_tool_matlab_dependencies();
+        target.update(existingExecutionToolImplementation);
+    end
+
     if isempty(existingExecutionTool)
-        executionTool = i_create_execution_tool();
+        executionTool = i_create_execution_service(executionToolName, existingExecutionToolImplementation);
         addedExecutionTool = target.add(executionTool, ...
             UserInstall = opts.UserInstall, ...
             SuppressOutput = opts.SuppressOutput);
         if isempty(addedExecutionTool)
-            existingExecutionTool = i_get_or_empty("SystemCommandExecutionTool", executionToolName);
+            existingExecutionTool = i_get_or_empty("ExecutionService", executionToolName);
         else
             existingExecutionTool = addedExecutionTool(1);
         end
     elseif opts.Force
-        existingExecutionTool.StartCommand = i_create_start_command();
+        existingExecutionTool.APIImplementation = existingExecutionToolImplementation;
+        existingExecutionTool.HostOperatingSystemSupport = target.HostOperatingSystemSupport.WindowsOnly();
         target.update(existingExecutionTool);
     end
 
@@ -307,32 +326,25 @@ function apiImplementation = i_create_tcp_api_implementation()
     apiImplementation.BuildDependencies = buildDependencies;
 end
 
-function executionTool = i_create_execution_tool()
-% Create a minimal local execution tool so Simulink exposes target actions.
-    executionTool = target.create("SystemCommandExecutionTool", ...
-        Name = "NCU Placeholder Execution Tool");
-    executionTool.StartCommand = i_create_start_command();
-    executionTool.StopCommand = i_create_stop_command();
+function executionToolImplementation = i_create_execution_tool_api_implementation(executionToolImplementationName)
+% Register MATLAB-backed execution tool implementation for deploy/start/status.
+    executionToolImplementation = target.create("APIImplementation", ...
+        Name = executionToolImplementationName);
+    executionToolImplementation.API = target.get("API", "ExecutionTool");
+    executionToolImplementation.BuildDependencies = i_create_execution_tool_matlab_dependencies();
 end
 
-function startCommand = i_create_start_command()
-    startCommand = target.create("Command");
-    cmdExe = getenv("ComSpec");
-    if isempty(cmdExe)
-        cmdExe = fullfile(getenv("SystemRoot"), "System32", "cmd.exe");
-    end
-    startCommand.String = cmdExe;
-    startCommand.Arguments = {"/c", "echo", "NCU execution tool placeholder. Launch target application separately."};
+function matlabDependencies = i_create_execution_tool_matlab_dependencies()
+    matlabDependencies = target.create("MATLABDependencies");
+    matlabDependencies.Classes = "ncu.NCUExecutionTool";
 end
 
-function stopCommand = i_create_stop_command()
-    stopCommand = target.create("Command");
-    cmdExe = getenv("ComSpec");
-    if isempty(cmdExe)
-        cmdExe = fullfile(getenv("SystemRoot"), "System32", "cmd.exe");
-    end
-    stopCommand.String = cmdExe;
-    stopCommand.Arguments = {"/c", "exit", "/b", "0"};
+function executionTool = i_create_execution_service(executionToolName, executionToolImplementation)
+% Register execution service so Build/Deploy/Start and status use MATLAB code.
+    executionTool = target.create("ExecutionService", ...
+        Name = executionToolName);
+    executionTool.APIImplementation = executionToolImplementation;
+    executionTool.HostOperatingSystemSupport = target.HostOperatingSystemSupport.WindowsOnly();
 end
 
 function tf = i_is_text_scalar(value)

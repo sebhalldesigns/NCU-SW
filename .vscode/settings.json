@@ -24,6 +24,10 @@
     {
       "label": "$(play) Flash All",
       "task": "flash-all",
+    },
+    {
+      "label": "$(play) Flash App",
+      "task": "flash-app",
     }
   ],
   "workbench.colorCustomizations": {

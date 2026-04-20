@@ -1,8 +1,9 @@
 classdef gpio_pin < Simulink.IntEnumType
     enumeration
-        LED1(0)
-        LED2(1)
-        LED3(2)
-        Button(3)
+        GPIO0(0)
+        GPIO1(1)
+        GPIO2(2)
+        GPIO3(3)
+        STATUS_LED(4)
     end
 end

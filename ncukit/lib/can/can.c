@@ -17,7 +17,12 @@ void can_transmit(uint8_t bus, const CAN_MESSAGE_BUS *message)
     (void)message;
 }
 
-CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count)
+CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, can_rx_count_t *rx_count)
+{
+    return can_receive_message(bus, status, rx_count);
+}
+
+CAN_MESSAGE_BUS can_receive_message(uint8_t bus, uint8_t *status, can_rx_count_t *rx_count)
 {
     CAN_MESSAGE_BUS message = {0};
     (void)bus;
@@ -53,14 +58,14 @@ void can2_transmit(CAN_MESSAGE_BUS message)
     (void)message;
 }
 
-CAN_MESSAGE_BUS can1_receive(uint8_t *status, uint32_t *rx_count)
+CAN_MESSAGE_BUS can1_receive(uint8_t *status, can_rx_count_t *rx_count)
 {
-    return can_receive(CAN_BUS_1, status, rx_count);
+    return can_receive_message(CAN_BUS_1, status, rx_count);
 }
 
-CAN_MESSAGE_BUS can2_receive(uint8_t *status, uint32_t *rx_count)
+CAN_MESSAGE_BUS can2_receive(uint8_t *status, can_rx_count_t *rx_count)
 {
-    return can_receive(CAN_BUS_2, status, rx_count);
+    return can_receive_message(CAN_BUS_2, status, rx_count);
 }
 
 #else
@@ -82,6 +87,7 @@ CAN_MESSAGE_BUS can2_receive(uint8_t *status, uint32_t *rx_count)
 
 #define FDCAN_MSG_RAM_WORDS_PER_RX    4U
 #define FDCAN_MSG_RAM_WORDS_PER_TX    4U
+#define FDCAN_RX_FIFO0_ELEMENTS       1U
 #define FDCAN1_RX_WORD_OFFSET         0U
 #define FDCAN1_TX_WORD_OFFSET         (FDCAN1_RX_WORD_OFFSET + FDCAN_MSG_RAM_WORDS_PER_RX)
 #define FDCAN2_RX_WORD_OFFSET         (FDCAN1_TX_WORD_OFFSET + FDCAN_MSG_RAM_WORDS_PER_TX)
@@ -116,7 +122,6 @@ static bool can_is_valid_bitrate(uint8_t bitrate);
 static uint32_t can_bitrate_to_brp(uint8_t bitrate);
 static uint8_t can_length_to_dlc(uint8_t length);
 static uint8_t can_dlc_to_length(uint8_t dlc);
-static CAN_MESSAGE_BUS can_default_message(void);
 static bool can_configure_pll2_for_fdcan(void);
 static bool can_enable_kernel_clock(void);
 static void can_configure_gpio(void);
@@ -130,9 +135,14 @@ void can_set_bitrate(uint8_t bus, uint8_t bitrate)
     can_node_t *node = can_get_node(bus);
     if ((node == NULL) || !can_is_valid_bitrate(bitrate)) return;
 
-    node->bitrate = bitrate;
-    node->initialized = false;
-    node->init_retry_count = 0U;
+    if (node->bitrate != bitrate) {
+        node->bitrate = bitrate;
+        node->initialized = false;
+        node->init_retry_count = 0U;
+    }
+
+    /* Initialize from configuration context so ISR-step paths stay lightweight. */
+    (void)can_ensure_ready(node);
 }
 
 void can_transmit(uint8_t bus, const CAN_MESSAGE_BUS *message)
@@ -143,11 +153,12 @@ void can_transmit(uint8_t bus, const CAN_MESSAGE_BUS *message)
     uint32_t r0;
     uint32_t r1;
     volatile uint32_t *element;
-    volatile uint8_t *payload;
+    uint32_t dataWord0;
+    uint32_t dataWord1;
     uint32_t i;
 
     if ((node == NULL) || (message == NULL)) return;
-    if (!can_ensure_ready(node)) return;
+    if (!node->initialized) return;
     if ((node->instance->TXBRP & (1UL << FDCAN_TX_BUFFER_INDEX)) != 0U) return;
 
     length = message->Length;
@@ -169,33 +180,44 @@ void can_transmit(uint8_t bus, const CAN_MESSAGE_BUS *message)
     r1 = ((uint32_t)dlc << CAN_ELEMENT_DLC_POS);
 
     element = ((volatile uint32_t *)SRAMCAN_BASE) + node->tx_word_offset;
-    payload = (volatile uint8_t *)&element[2];
 
     element[0] = r0;
     element[1] = r1;
-    element[2] = 0U;
-    element[3] = 0U;
+    dataWord0 = 0U;
+    dataWord1 = 0U;
 
     if (message->Remote == 0U) {
         for (i = 0U; i < length; i++) {
-            payload[i] = message->Data[i];
+            if (i < 4U) {
+                dataWord0 |= ((uint32_t)message->Data[i]) << (8U * i);
+            } else {
+                dataWord1 |= ((uint32_t)message->Data[i]) << (8U * (i - 4U));
+            }
         }
     }
+    element[2] = dataWord0;
+    element[3] = dataWord1;
 
     __DMB();
     node->instance->TXBAR = (1UL << FDCAN_TX_BUFFER_INDEX);
 }
 
-CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count)
+CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, can_rx_count_t *rx_count)
+{
+    return can_receive_message(bus, status, rx_count);
+}
+
+CAN_MESSAGE_BUS can_receive_message(uint8_t bus, uint8_t *status, can_rx_count_t *rx_count)
 {
     can_node_t *node = can_get_node(bus);
-    CAN_MESSAGE_BUS message = can_default_message();
+    static CAN_MESSAGE_BUS message;
     FDCAN_GlobalTypeDef *fdcan;
     uint32_t get_index;
     volatile uint32_t *element;
-    volatile uint8_t *payload;
     uint32_t r0;
     uint32_t r1;
+    uint32_t dataWord0;
+    uint32_t dataWord1;
     uint8_t dlc;
     uint8_t length;
     uint32_t i;
@@ -203,6 +225,7 @@ CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count)
     if (status != NULL) {
         *status = (uint8_t)CAN_RX_STATUS_EMPTY;
     }
+    (void)memset(&message, 0, sizeof(message));
 
     if (node == NULL) {
         if (status != NULL) {
@@ -214,7 +237,7 @@ CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count)
         return message;
     }
 
-    if (!can_ensure_ready(node)) {
+    if (!node->initialized) {
         if (status != NULL) {
             *status = (uint8_t)CAN_RX_STATUS_NOT_READY;
         }
@@ -233,16 +256,25 @@ CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count)
     }
 
     get_index = (fdcan->RXF0S & FDCAN_RXF0S_F0GI) >> FDCAN_RXF0S_F0GI_Pos;
-    element = ((volatile uint32_t *)SRAMCAN_BASE) + node->rx_word_offset + (get_index * FDCAN_MSG_RAM_WORDS_PER_RX);
-    payload = (volatile uint8_t *)&element[2];
+    if (get_index >= FDCAN_RX_FIFO0_ELEMENTS) {
+        /* Defensive guard: FIFO0 configured for one element, valid index is only 0. */
+        fdcan->RXF0A = 0U;
+        if (status != NULL) {
+            *status = (uint8_t)CAN_RX_STATUS_NOT_READY;
+        }
+        return message;
+    }
 
+    element = ((volatile uint32_t *)SRAMCAN_BASE) + node->rx_word_offset + (get_index * FDCAN_MSG_RAM_WORDS_PER_RX);
     r0 = element[0];
     r1 = element[1];
+    dataWord0 = element[2];
+    dataWord1 = element[3];
 
     message.Extended = ((r0 & CAN_ELEMENT_XTD) != 0U) ? 1U : 0U;
     message.Remote = ((r0 & CAN_ELEMENT_RTR) != 0U) ? 1U : 0U;
     message.Error = 0U;
-    message.Timestamp = (double)(r1 & CAN_ELEMENT_TIMESTAMP_MASK);
+    message.Timestamp = 0.0;
 
     if (message.Extended != 0U) {
         message.ID = (r0 & 0x1FFFFFFFUL);
@@ -259,7 +291,11 @@ CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count)
 
     if (message.Remote == 0U) {
         for (i = 0U; i < length; i++) {
-            message.Data[i] = payload[i];
+            if (i < 4U) {
+                message.Data[i] = (uint8_t)(dataWord0 >> (8U * i));
+            } else {
+                message.Data[i] = (uint8_t)(dataWord1 >> (8U * (i - 4U)));
+            }
         }
     }
 
@@ -297,14 +333,14 @@ void can2_transmit(CAN_MESSAGE_BUS message)
     can_transmit(CAN_BUS_2, &message);
 }
 
-CAN_MESSAGE_BUS can1_receive(uint8_t *status, uint32_t *rx_count)
+CAN_MESSAGE_BUS can1_receive(uint8_t *status, can_rx_count_t *rx_count)
 {
-    return can_receive(CAN_BUS_1, status, rx_count);
+    return can_receive_message(CAN_BUS_1, status, rx_count);
 }
 
-CAN_MESSAGE_BUS can2_receive(uint8_t *status, uint32_t *rx_count)
+CAN_MESSAGE_BUS can2_receive(uint8_t *status, can_rx_count_t *rx_count)
 {
-    return can_receive(CAN_BUS_2, status, rx_count);
+    return can_receive_message(CAN_BUS_2, status, rx_count);
 }
 
 static can_node_t *can_get_node(uint8_t bus)
@@ -365,13 +401,6 @@ static uint8_t can_dlc_to_length(uint8_t dlc)
     };
 
     return dlc_to_len_map[dlc & 0x0FU];
-}
-
-static CAN_MESSAGE_BUS can_default_message(void)
-{
-    CAN_MESSAGE_BUS message;
-    (void)memset(&message, 0, sizeof(message));
-    return message;
 }
 
 static bool can_configure_pll2_for_fdcan(void)

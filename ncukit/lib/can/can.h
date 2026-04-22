@@ -12,6 +12,8 @@
     #include <stm32h7xx.h>
 #endif
 
+typedef unsigned int can_rx_count_t;
+
 typedef enum {
     CAN_BUS_1 = 0U,
     CAN_BUS_2 = 1U
@@ -55,7 +57,9 @@ typedef struct {
 void can_set_bitrate(uint8_t bus, uint8_t bitrate);
 
 void can_transmit(uint8_t bus, const CAN_MESSAGE_BUS *message);
-CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count);
+CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, can_rx_count_t *rx_count);
+CAN_MESSAGE_BUS can_receive_message(uint8_t bus, uint8_t *status, can_rx_count_t *rx_count);
+void can_receive_full(uint8_t bus, CAN_MESSAGE_BUS *message, uint8_t *status, can_rx_count_t *rx_count);
 
 void can1_set_bitrate(can_bitrate_t bitrate);
 void can2_set_bitrate(can_bitrate_t bitrate);
@@ -63,7 +67,7 @@ void can2_set_bitrate(can_bitrate_t bitrate);
 void can1_transmit(CAN_MESSAGE_BUS message);
 void can2_transmit(CAN_MESSAGE_BUS message);
 
-CAN_MESSAGE_BUS can1_receive(uint8_t *status, uint32_t *rx_count);
-CAN_MESSAGE_BUS can2_receive(uint8_t *status, uint32_t *rx_count);
+CAN_MESSAGE_BUS can1_receive(uint8_t *status, can_rx_count_t *rx_count);
+CAN_MESSAGE_BUS can2_receive(uint8_t *status, can_rx_count_t *rx_count);
 
 #endif /* NCUKIT_LIB_CAN_H */

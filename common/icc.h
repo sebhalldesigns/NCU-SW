@@ -25,4 +25,17 @@
 #define ICC_M4_FLASH_BASE              (0x08100000UL)
 #define ICC_M4_FLASH_SIZE_BYTES        (1024UL * 1024UL)
 
+#define ICC_CAL_MAILBOX_DATA_MAX       (8U)
+#define ICC_CAL_MAILBOX_ADDR           (ICC_D3_SRAM_BASE + 0x100U)
+
+typedef struct {
+    volatile uint32_t pending;
+    volatile uint32_t address;
+    volatile uint8_t size;
+    volatile uint8_t data[ICC_CAL_MAILBOX_DATA_MAX];
+    volatile uint8_t reserved[3];
+} icc_cal_mailbox_t;
+
+#define ICC_CAL_MAILBOX ((volatile icc_cal_mailbox_t *)(ICC_CAL_MAILBOX_ADDR))
+
 #endif /* NCU_ICC_H */

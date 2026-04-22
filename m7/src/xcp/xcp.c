@@ -149,6 +149,7 @@ static bool service_deferred_upload(xcp_session_t *session, uint32_t now_us);
 static bool is_m4_step_active(void);
 static bool is_readable_region(uint32_t address, uint8_t size);
 static bool translate_m4_alias_address(uint32_t address, uint32_t *translated);
+static uint32_t normalize_m4_mailbox_address(uint32_t address);
 static bool pack_upload_response(const deferred_request_t *request, xcp_frame_t *response);
 
 /***************************************************************
@@ -157,10 +158,16 @@ static bool pack_upload_response(const deferred_request_t *request, xcp_frame_t 
 
 void xcp_init()
 {
+    volatile icc_cal_mailbox_t *cal_mailbox = ICC_CAL_MAILBOX;
+
     session_count = 0;
 
     RCC->AHB4ENR |= RCC_AHB4ENR_HSEMEN;
     (void)RCC->AHB4ENR;
+
+    cal_mailbox->pending = 0U;
+    cal_mailbox->address = 0U;
+    cal_mailbox->size = 0U;
 
     for (uint32_t i = 0; i < XCP_CONN_TYPE_MAX; i++)
     {
@@ -472,13 +479,19 @@ static void process_new_frame(xcp_session_t *session)
 
                 case XCP_COMMAND_DOWNLOAD:
                 {
+                    volatile icc_cal_mailbox_t *cal_mailbox = ICC_CAL_MAILBOX;
+                    uint8_t write_size;
+                    uint32_t write_address;
+                    uint8_t i;
+
                     session->download_size = session->frame.data[0];
+                    write_size = session->download_size;
 
 #if XCP_CORE_VERBOSE_LOG
                     uint32_t data = 0x0;
-                    if (session->download_size <= 4)
+                    if (write_size <= 4U)
                     {
-                        for (uint8_t i = 0; i < session->download_size; i++)
+                        for (i = 0U; i < write_size; i++)
                         {
                             data |= ((uint32_t)session->frame.data[1 + i]) << (i * 8);
                         }
@@ -486,6 +499,22 @@ static void process_new_frame(xcp_session_t *session)
 
                     XCP_CORE_LOG_U32("XCP DOWNLOAD", data);
 #endif
+
+                    if (write_size > ICC_CAL_MAILBOX_DATA_MAX) {
+                        write_size = ICC_CAL_MAILBOX_DATA_MAX;
+                    }
+
+                    write_address = normalize_m4_mailbox_address(session->mta);
+
+                    cal_mailbox->address = write_address;
+                    cal_mailbox->size = write_size;
+                    for (i = 0U; i < write_size; i++) {
+                        cal_mailbox->data[i] = session->frame.data[1U + i];
+                    }
+                    __DMB();
+                    cal_mailbox->pending = 1U;
+
+                    session->mta += write_size;
 
                     pack_generic_response(&response_frame);
                     handled = true;
@@ -886,6 +915,17 @@ static bool translate_m4_alias_address(uint32_t address, uint32_t *translated)
 
     *translated = address;
     return true;
+}
+
+static uint32_t normalize_m4_mailbox_address(uint32_t address)
+{
+    uint32_t bus_limit = ICC_M4_SRAM_BUS_BASE + ICC_M4_SRAM_SIZE_BYTES;
+
+    if (address >= ICC_M4_SRAM_BUS_BASE && address < bus_limit) {
+        return address - ICC_M4_SRAM_BUS_BASE + ICC_M4_SRAM_ALIAS_BASE;
+    }
+
+    return address;
 }
 
 static void pack_conn_response(xcp_frame_t *response)

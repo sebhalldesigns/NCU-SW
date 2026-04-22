@@ -1147,231 +1147,516 @@ ASAP2_VERSION 1 71
       /end XCP_ON_TCP_IP
     /end IF_DATA
 
-    /begin MEASUREMENT V_AIN0_mV ""
-      UWORD app_CM_uint16 0 0 0 65535
-      ECU_ADDRESS 0x10000268
-    /end MEASUREMENT
+    /begin CHARACTERISTIC 
+    /* Name                   */      N_byte1
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
+    /* ECU Address            */      0x1000003B
+    /* Record Layout          */      Record_UBYTE
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_uint8
+    /* Lower Limit            */      0
+    /* Upper Limit            */      255
+  /end CHARACTERISTIC 
 
-    /begin MEASUREMENT V_AIN1_mV ""
-      UWORD app_CM_uint16 0 0 0 65535
-      ECU_ADDRESS 0x10000266
-    /end MEASUREMENT
+  /begin CHARACTERISTIC 
+    /* Name                   */      N_byte2
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
+    /* ECU Address            */      0x1000003A
+    /* Record Layout          */      Record_UBYTE
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_uint8
+    /* Lower Limit            */      0
+    /* Upper Limit            */      255
+  /end CHARACTERISTIC 
 
-    /begin MEASUREMENT V_AIN2_mV ""
-      UWORD app_CM_uint16 0 0 0 65535
-      ECU_ADDRESS 0x10000264
-    /end MEASUREMENT
+  /begin CHARACTERISTIC 
+    /* Name                   */      N_byte3
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
+    /* ECU Address            */      0x10000039
+    /* Record Layout          */      Record_UBYTE
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_uint8
+    /* Lower Limit            */      0
+    /* Upper Limit            */      255
+  /end CHARACTERISTIC 
 
-    /begin MEASUREMENT V_AIN3_mV ""
-      UWORD app_CM_uint16 0 0 0 65535
-      ECU_ADDRESS 0x10000262
-    /end MEASUREMENT
+  /begin CHARACTERISTIC 
+    /* Name                   */      N_byte4
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
+    /* ECU Address            */      0x10000038
+    /* Record Layout          */      Record_UBYTE
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_uint8
+    /* Lower Limit            */      0
+    /* Upper Limit            */      255
+  /end CHARACTERISTIC 
 
-    /begin MEASUREMENT app_B.CANPack.Data ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-      LAYOUT COLUMN_DIR
-      MATRIX_DIM 8
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      V_AIN0_mV
+    /* Long identifier        */      ""
+    /* Data type              */      UWORD
+    /* Conversion method      */      app_CM_uint16
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      65535
+    ECU_ADDRESS                       0x10000266
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CANPack.Error ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      V_AIN1_mV
+    /* Long identifier        */      ""
+    /* Data type              */      UWORD
+    /* Conversion method      */      app_CM_uint16
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      65535
+    ECU_ADDRESS                       0x10000264
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CANPack.Extended ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      V_AIN2_mV
+    /* Long identifier        */      ""
+    /* Data type              */      UWORD
+    /* Conversion method      */      app_CM_uint16
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      65535
+    ECU_ADDRESS                       0x10000262
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CANPack.ID ""
-      ULONG app_CM_uint32 0 0 0 4294967295
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      V_AIN3_mV
+    /* Long identifier        */      ""
+    /* Data type              */      UWORD
+    /* Conversion method      */      app_CM_uint16
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      65535
+    ECU_ADDRESS                       0x10000260
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CANPack.Length ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANPack.Data
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    LAYOUT                            COLUMN_DIR
+    MATRIX_DIM                        8 
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANPack.Data@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CANPack.Remote ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANPack.Error
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANPack.Error@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CANPack.Timestamp ""
-      FLOAT64_IEEE app_CM_double 0 0 -1.7E+308 1.7E+308
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANPack.Extended
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANPack.Extended@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CANUnpack_o3 ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANPack.ID
+    /* Long identifier        */      ""
+    /* Data type              */      ULONG
+    /* Conversion method      */      app_CM_uint32
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      4294967295
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANPack.ID@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CCaller_o1.Data ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-      LAYOUT COLUMN_DIR
-      MATRIX_DIM 8
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANPack.Length
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANPack.Length@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CCaller_o1.Error ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANPack.Remote
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANPack.Remote@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CCaller_o1.Extended ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANPack.Timestamp
+    /* Long identifier        */      ""
+    /* Data type              */      FLOAT64_IEEE
+    /* Conversion method      */      app_CM_double
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      -1.7E+308
+    /* Upper limit            */      1.7E+308
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANPack.Timestamp@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CCaller_o1.ID ""
-      ULONG app_CM_uint32 0 0 0 4294967295
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANUnpack_o1
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANUnpack_o1@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CCaller_o1.Length ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CANUnpack_o2
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CANUnpack_o2@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CCaller_o1.Remote ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CCaller_o1.Data
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    LAYOUT                            COLUMN_DIR
+    MATRIX_DIM                        8 
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CCaller_o1.Data@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_B.CCaller_o1.Timestamp ""
-      FLOAT64_IEEE app_CM_double 0 0 -1.7E+308 1.7E+308
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CCaller_o1.Error
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CCaller_o1.Error@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_DW.CANPack_ModeSignalID ""
-      SLONG app_CM_int_T 0 0 -2147483648 2147483647
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CCaller_o1.Extended
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CCaller_o1.Extended@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_DW.CANUnpack_ModeSignalID ""
-      SLONG app_CM_int_T 0 0 -2147483648 2147483647
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CCaller_o1.ID
+    /* Long identifier        */      ""
+    /* Data type              */      ULONG
+    /* Conversion method      */      app_CM_uint32
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      4294967295
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CCaller_o1.ID@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_DW.CANUnpack_StatusPortID ""
-      SLONG app_CM_int_T 0 0 -2147483648 2147483647
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CCaller_o1.Length
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CCaller_o1.Length@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT app_DW.clockTickCounter ""
-      SLONG app_CM_int32 0 0 -2147483648 2147483647
-      ECU_ADDRESS 0x0
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CCaller_o1.Remote
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CCaller_o1.Remote@ */
+  /end MEASUREMENT 
 
-    /begin CHARACTERISTIC bLedState ""
-      VALUE 0x10000038 Record_UBYTE 0 app_CM_uint8 0 255
-    /end CHARACTERISTIC
+  /begin MEASUREMENT 
+    /* Name                   */      app_B.CCaller_o1.Timestamp
+    /* Long identifier        */      ""
+    /* Data type              */      FLOAT64_IEEE
+    /* Conversion method      */      app_CM_double
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      -1.7E+308
+    /* Upper limit            */      1.7E+308
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_B.CCaller_o1.Timestamp@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT byte0 ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x10000261
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_DW.CANPack_ModeSignalID
+    /* Long identifier        */      ""
+    /* Data type              */      SLONG
+    /* Conversion method      */      app_CM_int_T
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      -2147483648
+    /* Upper limit            */      2147483647
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_DW.CANPack_ModeSignalID@ */
+  /end MEASUREMENT 
 
-    /begin MEASUREMENT byte1 ""
-      UBYTE app_CM_uint8 0 0 0 255
-      ECU_ADDRESS 0x10000260
-    /end MEASUREMENT
+  /begin MEASUREMENT 
+    /* Name                   */      app_DW.CANUnpack_ModeSignalID
+    /* Long identifier        */      ""
+    /* Data type              */      SLONG
+    /* Conversion method      */      app_CM_int_T
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      -2147483648
+    /* Upper limit            */      2147483647
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_DW.CANUnpack_ModeSignalID@ */
+  /end MEASUREMENT 
 
-    /begin COMPU_METHOD app_CM_double "Q = V"
-      IDENTICAL "%15.10" ""
-    /end COMPU_METHOD
+  /begin MEASUREMENT 
+    /* Name                   */      app_DW.CANUnpack_StatusPortID
+    /* Long identifier        */      ""
+    /* Data type              */      SLONG
+    /* Conversion method      */      app_CM_int_T
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      -2147483648
+    /* Upper limit            */      2147483647
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_DW.CANUnpack_StatusPortID@ */
+  /end MEASUREMENT 
 
-    /begin COMPU_METHOD app_CM_int32 "Q = V"
-      IDENTICAL "%10.0" ""
-    /end COMPU_METHOD
+  /begin MEASUREMENT 
+    /* Name                   */      app_DW.clockTickCounter
+    /* Long identifier        */      ""
+    /* Data type              */      SLONG
+    /* Conversion method      */      app_CM_int32
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      -2147483648
+    /* Upper limit            */      2147483647
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_DW.clockTickCounter@ */
+  /end MEASUREMENT 
 
-    /begin COMPU_METHOD app_CM_int_T "Q = V"
-      IDENTICAL "%0.6" ""
-    /end COMPU_METHOD
+  /begin MEASUREMENT 
+    /* Name                   */      app_DW.clockTickCounter_k
+    /* Long identifier        */      ""
+    /* Data type              */      SLONG
+    /* Conversion method      */      app_CM_int32
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      -2147483648
+    /* Upper limit            */      2147483647
+    ECU_ADDRESS                       0x0000 /* @ECU_Address@app_DW.clockTickCounter_k@ */
+  /end MEASUREMENT 
 
-    /begin COMPU_METHOD app_CM_uint16 "Q = V"
-      IDENTICAL "%5.0" ""
-    /end COMPU_METHOD
+  /begin COMPU_METHOD
+    /* Name of CompuMethod    */      app_CM_double
+    /* Long identifier        */      "Q = V"
+    /* Conversion Type        */      IDENTICAL
+    /* Format                 */      "%15.10"
+    /* Units                  */      ""
+  /end COMPU_METHOD
 
-    /begin COMPU_METHOD app_CM_uint32 "Q = V"
-      IDENTICAL "%10.0" ""
-    /end COMPU_METHOD
+  /begin COMPU_METHOD
+    /* Name of CompuMethod    */      app_CM_int32
+    /* Long identifier        */      "Q = V"
+    /* Conversion Type        */      IDENTICAL
+    /* Format                 */      "%10.0"
+    /* Units                  */      ""
+  /end COMPU_METHOD
 
-    /begin COMPU_METHOD app_CM_uint8 "Q = V"
-      IDENTICAL "%3.0" ""
-    /end COMPU_METHOD
+  /begin COMPU_METHOD
+    /* Name of CompuMethod    */      app_CM_int_T
+    /* Long identifier        */      "Q = V"
+    /* Conversion Type        */      IDENTICAL
+    /* Format                 */      "%0.6"
+    /* Units                  */      ""
+  /end COMPU_METHOD
 
-    /begin RECORD_LAYOUT Record_FLOAT64_IEEE
-      FNC_VALUES 1 FLOAT64_IEEE COLUMN_DIR DIRECT
-    /end RECORD_LAYOUT
+  /begin COMPU_METHOD
+    /* Name of CompuMethod    */      app_CM_uint16
+    /* Long identifier        */      "Q = V"
+    /* Conversion Type        */      IDENTICAL
+    /* Format                 */      "%5.0"
+    /* Units                  */      ""
+  /end COMPU_METHOD
 
-    /begin RECORD_LAYOUT Record_SLONG
-      FNC_VALUES 1 SLONG COLUMN_DIR DIRECT
-    /end RECORD_LAYOUT
+  /begin COMPU_METHOD
+    /* Name of CompuMethod    */      app_CM_uint32
+    /* Long identifier        */      "Q = V"
+    /* Conversion Type        */      IDENTICAL
+    /* Format                 */      "%10.0"
+    /* Units                  */      ""
+  /end COMPU_METHOD
 
-    /begin RECORD_LAYOUT Record_UBYTE
-      FNC_VALUES 1 UBYTE COLUMN_DIR DIRECT
-    /end RECORD_LAYOUT
+  /begin COMPU_METHOD
+    /* Name of CompuMethod    */      app_CM_uint8
+    /* Long identifier        */      "Q = V"
+    /* Conversion Type        */      IDENTICAL
+    /* Format                 */      "%3.0"
+    /* Units                  */      ""
+  /end COMPU_METHOD
 
-    /begin RECORD_LAYOUT Record_ULONG
-      FNC_VALUES 1 ULONG COLUMN_DIR DIRECT
-    /end RECORD_LAYOUT
+  /begin  RECORD_LAYOUT Record_FLOAT64_IEEE
+    FNC_VALUES 1 FLOAT64_IEEE COLUMN_DIR DIRECT
+  /end  RECORD_LAYOUT 
 
-    /begin RECORD_LAYOUT Record_UWORD
-      FNC_VALUES 1 UWORD COLUMN_DIR DIRECT
-    /end RECORD_LAYOUT
+  /begin  RECORD_LAYOUT Record_SLONG
+    FNC_VALUES 1 SLONG COLUMN_DIR DIRECT
+  /end  RECORD_LAYOUT 
 
-    /begin GROUP app "app"
-      ROOT
-      /begin REF_CHARACTERISTIC
-        bLedState
-      /end REF_CHARACTERISTIC
-      /begin REF_MEASUREMENT
-        app_B.CANUnpack_o3 app_DW.CANPack_ModeSignalID app_DW.CANUnpack_ModeSignalID app_DW.CANUnpack_StatusPortID app_DW.clockTickCounter byte0 byte1
-      /end REF_MEASUREMENT
-      /begin SUB_GROUP
-        app_AIN0 app_AIN1 app_AIN2 app_AIN3 app_B.CANPack app_B.CCaller_o1
-      /end SUB_GROUP
-    /end GROUP
+  /begin  RECORD_LAYOUT Record_UBYTE
+    FNC_VALUES 1 UBYTE COLUMN_DIR DIRECT
+  /end  RECORD_LAYOUT 
 
-    /begin GROUP app_AIN0 "app/AIN0"
-      /begin REF_MEASUREMENT
-        V_AIN0_mV
-      /end REF_MEASUREMENT
-    /end GROUP
+  /begin  RECORD_LAYOUT Record_ULONG
+    FNC_VALUES 1 ULONG COLUMN_DIR DIRECT
+  /end  RECORD_LAYOUT 
 
-    /begin GROUP app_AIN1 "app/AIN1"
-      /begin REF_MEASUREMENT
-        V_AIN1_mV
-      /end REF_MEASUREMENT
-    /end GROUP
+  /begin  RECORD_LAYOUT Record_UWORD
+    FNC_VALUES 1 UWORD COLUMN_DIR DIRECT
+  /end  RECORD_LAYOUT 
 
-    /begin GROUP app_AIN2 "app/AIN2"
-      /begin REF_MEASUREMENT
-        V_AIN2_mV
-      /end REF_MEASUREMENT
-    /end GROUP
+  /begin GROUP
+    /* Name                   */      app
+    /* Long identifier        */      "app"
+    /* Root                   */      ROOT
+    /begin SUB_GROUP
+      app_B.CANPack
+      app_B.CCaller_o1
+      app_AIN0
+      app_AIN1
+      app_AIN2
+      app_AIN3
+    /end SUB_GROUP
+    /begin REF_CHARACTERISTIC
+      N_byte1
+      N_byte2
+      N_byte3
+      N_byte4
+    /end REF_CHARACTERISTIC
+    /begin REF_MEASUREMENT
+      app_B.CANUnpack_o1
+      app_B.CANUnpack_o2
+      app_DW.CANPack_ModeSignalID
+      app_DW.CANUnpack_ModeSignalID
+      app_DW.CANUnpack_StatusPortID
+      app_DW.clockTickCounter
+      app_DW.clockTickCounter_k
+    /end REF_MEASUREMENT
+  /end GROUP
 
-    /begin GROUP app_AIN3 "app/AIN3"
-      /begin REF_MEASUREMENT
-        V_AIN3_mV
-      /end REF_MEASUREMENT
-    /end GROUP
+  /begin GROUP
+    /* Name                   */      app_AIN0
+    /* Long identifier        */      "app/AIN0"
+    /begin REF_MEASUREMENT
+      V_AIN0_mV
+    /end REF_MEASUREMENT
+  /end GROUP
 
-    /begin GROUP app_B.CANPack ""
-      /begin REF_MEASUREMENT
-        app_B.CANPack.Data app_B.CANPack.Error app_B.CANPack.Extended app_B.CANPack.ID app_B.CANPack.Length app_B.CANPack.Remote app_B.CANPack.Timestamp
-      /end REF_MEASUREMENT
-    /end GROUP
+  /begin GROUP
+    /* Name                   */      app_AIN1
+    /* Long identifier        */      "app/AIN1"
+    /begin REF_MEASUREMENT
+      V_AIN1_mV
+    /end REF_MEASUREMENT
+  /end GROUP
 
-    /begin GROUP app_B.CCaller_o1 ""
-      /begin REF_MEASUREMENT
-        app_B.CCaller_o1.Data app_B.CCaller_o1.Error app_B.CCaller_o1.Extended app_B.CCaller_o1.ID app_B.CCaller_o1.Length app_B.CCaller_o1.Remote app_B.CCaller_o1.Timestamp
-      /end REF_MEASUREMENT
-    /end GROUP
+  /begin GROUP
+    /* Name                   */      app_AIN2
+    /* Long identifier        */      "app/AIN2"
+    /begin REF_MEASUREMENT
+      V_AIN2_mV
+    /end REF_MEASUREMENT
+  /end GROUP
+
+  /begin GROUP
+    /* Name                   */      app_AIN3
+    /* Long identifier        */      "app/AIN3"
+    /begin REF_MEASUREMENT
+      V_AIN3_mV
+    /end REF_MEASUREMENT
+  /end GROUP
+
+  /begin GROUP
+    /* Name                   */      app_B.CANPack
+    /* Long identifier        */      ""
+    /begin REF_MEASUREMENT
+      app_B.CANPack.Extended
+      app_B.CANPack.Length
+      app_B.CANPack.Remote
+      app_B.CANPack.Error
+      app_B.CANPack.ID
+      app_B.CANPack.Timestamp
+      app_B.CANPack.Data
+    /end REF_MEASUREMENT
+  /end GROUP
+
+  /begin GROUP
+    /* Name                   */      app_B.CCaller_o1
+    /* Long identifier        */      ""
+    /begin REF_MEASUREMENT
+      app_B.CCaller_o1.Extended
+      app_B.CCaller_o1.Length
+      app_B.CCaller_o1.Remote
+      app_B.CCaller_o1.Error
+      app_B.CCaller_o1.ID
+      app_B.CCaller_o1.Timestamp
+      app_B.CCaller_o1.Data
+    /end REF_MEASUREMENT
+  /end GROUP
+
+    
 
   /end MODULE
 

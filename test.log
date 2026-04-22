@@ -1,0 +1,9 @@
+Conversion Warnings Log
+
+
+MSG_ID: 12 	MSG_TYPE: S 	MSG_NAME: TEST
+	SIG_NAME: byte0, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: byte1, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: byte2, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: byte3, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: byte4, STATUS: Invalid Max or Min value., ACTION: Value Set to default

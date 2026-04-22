@@ -1,3 +1,20 @@
+[FILE_INFO]
+Identification=CANape-Configuration-File
+FileName=NCU.cna
+FileNameAbsolute=C:\Users\seb\NCU-SW\CANape\NCU\NCU.cna
+WorkingDirectory=C:\Users\seb\NCU-SW\CANape\NCU
+ProjectId=07ea-0004-000f-0009-002b-0022-0000
+FileVersion=2400
+PrgVersion=Version 24.0.10.2710 
+PrgDate=17.12.2025
+Description=
+CreationTime=09:54
+CreationDate=04/15/2026 ; Month/Day/Year
+ModificationTime=12:08
+ModificationDate=04/22/2026 ; Month/Day/Year
+Protected=0
+CurrentWindowsACP=1252
+
 [ANALYSISPROFILE_MDF_LIST]
 Count=1
 
@@ -16,7 +33,21 @@ DisplayCount=0
 Count=0
 
 [CALIBRATION_LIST]
-Count=0
+Count=1
+
+[CALIBRATION_OBJECT_1]
+EditOffset=1
+EditFactor=2
+EditFormat=2
+ShowWorkingPoint=0
+FollowWorkingPoint=0
+OverwriteWorkingPointInputX=
+OverwriteWorkingPointInputY=
+Module=NCU
+Name=bLedState
+StimMode=0
+StimModeChannelBased=0
+IsFallback=0
 
 [CANAPE_ENVIRONMENT]
 OBJECT_COUNT=0
@@ -61,7 +92,7 @@ Count=0
 Name=
 Comment=
 Maximized=0
-ActiveWindow=1
+ActiveWindow=3
 IsReportPage=0
 TimeAxisSynchronized=0
 PrintLayout=Default
@@ -91,23 +122,6 @@ Count=1
 
 [FILE_COMMENT_TEMPLATE]
 Count=0
-
-[FILE_INFO]
-Identification=CANape-Configuration-File
-FileName=NCU.cna
-FileNameAbsolute=C:\Users\seb\NCU-SW\CANape\NCU\NCU.cna
-WorkingDirectory=C:\Users\seb\NCU-SW\CANape\NCU
-ProjectId=07ea-0004-000f-0009-002b-0022-0000
-FileVersion=2400
-PrgVersion=Version 24.0.10.2710 
-PrgDate=17.12.2025
-Description=
-CreationTime=09:54
-CreationDate=04/15/2026 ; Month/Day/Year
-ModificationTime=09:54
-ModificationDate=04/15/2026 ; Month/Day/Year
-Protected=0
-CurrentWindowsACP=1252
 
 [FUNCTION_OBJECT_1]
 Comment=Comments entered by the user during measurement
@@ -154,9 +168,148 @@ SubConfigsCount=0
 Count=0
 
 [MEASUREMENT_LIST]
-Count=0
+Count=3
 OfflineFileCount=0
 MeaCfgLabellistName=
+
+[MEASUREMENT_OBJECT_1]
+Module=NCU
+Name=bButtonState
+Disabled=0
+Mode=1
+Rate=100
+ModeIsDefault=1
+Row=0
+Column=0
+MeaReferenced=1
+ArchivBy_1=Recorder
+IsFallback=0
+HasManagedDisplay=0
+DisplayCount=0
+
+[MEASUREMENT_OBJECT_2]
+Module=NCU
+Name=byte0
+Disabled=0
+Mode=1
+Rate=100
+ModeIsDefault=1
+Row=0
+Column=0
+MeaReferenced=1
+ArchivBy_1=Recorder
+IsFallback=0
+HasManagedDisplay=0
+DisplayCount=1
+
+[MEASUREMENT_OBJECT_2_DISPLAY_1]
+Window=2
+Index=1
+Color=255
+ApplyColorToBackground=0
+ColorFunction=0
+ColorFunctionScope=1
+LineTyp=2
+YMinHome=0
+YMaxHome=255
+YMin=0
+YMax=255
+ValueFormat=3
+BitMask=255
+ShowYAxis=1
+Width=10
+LineStyle=1
+MarkerType=1
+SRMainValue=0
+InvalidValueDrawMode=3
+LineWidth=1
+Precision=-2
+Digits=6
+Enabled=1
+StoredFocused=1
+SublMask=1
+MeaSublMask=3
+LockScaling=0
+RightAxis=0
+MapMode=2
+OverlayGridColor=0
+ShadingMode=3
+EditOffset=1
+EditFactor=2
+WAxisLabel=
+XAxisLabel=
+YAxisLabel=
+ShowWorkingPointHistory=0
+AxisCaption=
+Row=0
+Col=0
+YAxis_ID=0
+AxisTemplate=
+GUID=DISPLAY_373560e7-1a38-4d4e-87e7-1df60d67b38f
+LegendBackgroundColor=-1
+LegendTextColor=-1
+
+[MEASUREMENT_OBJECT_3]
+Module=NCU
+Name=byte1
+Disabled=0
+Mode=1
+Rate=100
+ModeIsDefault=1
+Row=0
+Column=0
+MeaReferenced=1
+ArchivBy_1=Recorder
+IsFallback=0
+HasManagedDisplay=0
+DisplayCount=1
+
+[MEASUREMENT_OBJECT_3_DISPLAY_1]
+Window=2
+Index=0
+Color=65535
+ApplyColorToBackground=0
+ColorFunction=0
+ColorFunctionScope=1
+LineTyp=2
+YMinHome=0
+YMaxHome=255
+YMin=0
+YMax=255
+ValueFormat=3
+BitMask=255
+ShowYAxis=1
+Width=10
+LineStyle=1
+MarkerType=1
+SRMainValue=0
+InvalidValueDrawMode=3
+LineWidth=1
+Precision=-2
+Digits=6
+Enabled=1
+StoredFocused=0
+SublMask=1
+MeaSublMask=3
+LockScaling=0
+RightAxis=0
+MapMode=2
+OverlayGridColor=0
+ShadingMode=3
+EditOffset=1
+EditFactor=2
+WAxisLabel=
+XAxisLabel=
+YAxisLabel=
+ShowWorkingPointHistory=0
+AxisCaption=
+Row=0
+Col=0
+YAxis_ID=0
+AxisTemplate=
+GUID=DISPLAY_c294f8d2-cda4-4dbd-a3ea-d17a61d291a2
+LegendBackgroundColor=-1
+LegendTextColor=-1
 
 [MEASUREMENT_OPTIONS]
 RemainingRecordingTime=5000
@@ -199,7 +352,7 @@ ShowFileSignalsDuringMeasurement=0
 CreateInternalSignalsOnDemand=0
 LiveMeasurementRate=1000
 EditCommentAfterSaveSignals=1
-ShowRejectFileMsg=1
+ShowRejectFileMsg=0
 MeasurementStopTimeoutMS=15000
 TaraMeasurementDurationMS=5000
 TaraMeasurementForerunMS=2000
@@ -386,8 +539,12 @@ TreeExpand_0=@All
 TreeExpand_1=All\Devices
 TreeExpand_2=All\Devices\System
 TreeExpand_3=All\Devices\NCU
-TreeExpand_4=$All\Devices
-TreeExpand_5=#All\Devices\NCU
+TreeExpand_4=All\Devices\NCU\test.a2l
+TreeExpand_5=All\Devices\NCU\test.a2l\app
+TreeExpand_6=All\Devices\NCU\test.a2l\app\app_GPIO_Write
+TreeExpand_7=All\Devices\NCU\test.a2l\app\app_GPIO_Read
+TreeExpand_8=$All\Devices
+TreeExpand_9=#All\Devices\NCU\test.a2l\app\byte1
 TextSearchCaseSensitive=0
 TextSearchUseMode=1
 TextSearchSearchFullText=1
@@ -397,8 +554,167 @@ TextSearchSearchInDisplayNames=1
 [VIRTUAL_MDF_LIST]
 Count=0
 
+[WINDOW_1]
+ComponentCount=1
+Title=
+Type=65536
+Comment=Multi view window
+Number=1
+GUID=WINDOW_77e9eedd-87e6-4bdc-94aa-378af2b5519b
+ScreenDPIinSection=96
+Position=0, 30, 30, 612, 344 ;cmd, x, y, w, h
+Position_dpi96=0, 30, 30, 612, 344 ;cmd, x, y, w, h
+Position_Page01=0, 30, 30, 612, 344 ;cmd, x, y, w, h
+Position_Page01_dpi96=0, 30, 30, 612, 344 ;cmd, x, y, w, h
+FloatingWindow=0
+ShowSignalComments=1
+DisplayMask=1 ; pages 1
+
+[WINDOW_2]
+XLen=316
+XMin=0
+XMinNs=0
+XMax=2685
+XMaxNs=2685824190
+Grid=1
+Mark=1
+YValue=1
+ShowLegend=2
+ShowLegendHeader=1
+LegendPixWidth=112
+LegendPixWidth_dpi96=112
+LegendPixHeight=105
+LegendPixHeight_dpi96=105
+LegendPos=2
+Optimize=1
+Average=0
+ShowMinMax=1
+XYModeIndexP1=-1
+DisplayModeAuto=0
+XStart=0
+AbsoluteTimeMode=0
+YAxisWidth=32
+YAxisWidth_dpi96=32
+RightYAxisWidth=0
+RightYAxisWidth_dpi96=0
+ObjectMode=0
+DisplayMode=0
+ShowSignalMode=0
+AxisScrollPos2=0
+LegendScrollPos=0
+LegendShowLifeValues=1
+ShowXScrollbar=1
+ShowWholeTimeRange=0
+YAxisDynScaleEnabled=0
+YAxisDynScaleEnlarge=25
+TimeStickToZero=0
+XYModeRedrawEnabled=0
+MARKER_TIME_1=5000000000
+MARKER_TIME_2=15000000000
+OscilloscopeEnabled=0
+OsciEventCount=0
+EventCompareModeEnabled=0
+ObjectCount=0
+Title=Graphic {DISPLAYED_FILENAME}
+Type=1
+Comment=Graphic Window
+Number=2
+GUID=WINDOW_fe3cb5ef-198f-4a64-8dec-afdc69eb3435
+ScreenDPIinSection=96
+Position=0, 0, 0, 0, 0 ;cmd, x, y, w, h
+Position_dpi96=0, 0, 0, 0, 0 ;cmd, x, y, w, h
+Position_Page01=0, 0, 0, 0, 0 ;cmd, x, y, w, h
+Position_Page01_dpi96=0, 0, 0, 0, 0 ;cmd, x, y, w, h
+FloatingWindow=0
+JointIndex=1
+ShowSignalComments=1
+ComponentOrder=0
+ComponentSpace=100
+LEGEND_HSCROLL_POS=0
+LEGEND_SHARED_COLUMNS=1
+TimeAxisTemplate=<default>
+DisplayMask=1 ; pages 1
+
+[WINDOW_2_LEG_COLUMNS]
+ScreenDPIinSection=96
+COUNT=1
+COL_0=31, 112
+COL_0_dpi96=31, 112
+
+[WINDOW_3]
+ProgID=
+PROPERTIES_COUNT=1
+PROPERTY_1={"Version":"1.3.0.0","Configuration":{"ArrayWindowSubControlConfiguration":{"NumericGraphicCompositeWidth":314,"NumericGraphicCompositeHeight":217,"LegendCoordinatePoint":{"X":0,"Y":0},"LegendWidth":0,"LegendHeight":0,"LegendLayoutGroupSizeWidth":0,"LegendLayoutGroupSizeHeight":0,"NumericCoordinatePoint":{"X":1,"Y":24},"NumericWidth":312,"NumericHeight":192,"NumericLayoutGroupSizeWidth":312,"NumericLayoutGroupSizeHeight":192,"Intersection2DXWCoordinatePoint":{"X":0,"Y":0},"Intersection2DXWWidth":0,"Intersection2DXWHeight":0,"Intersection2DXWLayoutGroupSizeWidth":0,"Intersection2DXWLayoutGroupSizeHeight":0,"Intersection2DYWCoordinatePoint":{"X":0,"Y":0},"Intersection2DYWWidth":0,"Intersection2DYWHeight":0,"Intersection2DYWLayoutGroupSizeWidth":0,"Intersection2DYWLayoutGroupSizeHeight":0,"Graphic3DCoordinatePoint":{"X":0,"Y":0},"Graphic3DWidth":0,"Graphic3DHeight":0,"Graphic3DLayoutGroupSizeWidth":0,"Graphic3DLayoutGroupSizeHeight":0},"ShowCalibrationBar":true,"ShowHorizontalChartLines":false,"ShowVerticalChartLines":false,"NonSelectedIntersectionLineTransparency":0.100000024,"FocusedValueSymbol":"DEVICE:\u0022NCU\u0022:\u0022bLedState\u0022:P","ValueObjectConfigurations":[{"Symbol":"DEVICE:\u0022NCU\u0022:\u0022bLedState\u0022:P","SerializationColor":{"R":0,"G":0,"B":0,"A":255},"Collapsed":false,"SerializationFrameColor":{"R":0,"G":0,"B":0,"A":255},"ValueFormat":0,"AxisValueFormats":[],"NumericFormat":4,"AxisNumericFormats":[],"NumericFormatDigits":6,"IsActive":true,"CurrentChartViewType":2,"ColorFunction":null,"PointMarker":1,"IsValueAnnotationEnabled":false,"ValueAxisMin":0,"ValueAxisMax":1,"ValueAxisMinHome":0,"ValueAxisMaxHome":255,"ValueAxisPosition":0,"ShowWorkingPointHistory":false,"CommonValueAxisName":null,"CommonValueAxisLabel":"","CommonValueAxisMin":0,"CommonValueAxisMax":0,"CommonValueAxisMinHome":0,"CommonValueAxisMaxHome":0,"SerializationCommonValueAxisColor":{"R":0,"G":0,"B":0,"A":0},"CommonValueAxisID":0,"CommonValueAxisFormat":null,"CommonValueAxisPosition":0,"CommonXAxisLabel":"","CommonYAxisLabel":"","CustomAxisLabels":["","","","","",""]}],"ColorFunctions":[],"NumericGraphicControlPosition":0,"NumericGraphicControlSelectedTab":0,"GraphicControlPosition":0,"Height2DXControl":1,"Height2DYControl":1,"Height3DControl":2,"HeightNumericControl":1,"HeightChartControl":1,"HeightLegendControl":0.44999998807907104,"Width2DXControl":1,"Width2DYControl":1,"Width3DControl":2,"WidthNumericControl":2,"WidthChartControl":2,"WidthLegendControl":0.30000001192092896,"HeightValueControl":1,"WidthValueControl":1,"HeightNumericGraphicControl":1,"WidthNumericGraphicControl":1,"Height2DChartsControl":1,"Width2DChartsControl":1,"IsXAxisHeightSynchronizedBetweenCharts":true,"IsYAxisAreaWidthSynchronizedBetweenCharts":true,"SyncedXAxisHeight":"NaN","XWChartXAxisHeight":"NaN","YWChartXAxisHeight":"NaN","SyncedLeftAxisAreaWidth":"NaN","XWChartLeftAxisAreaWidth":"NaN","YWChartLeftAxisAreaWidth":"NaN","SyncedRightAxisAreaWidth":"NaN","XWChartRightAxisAreaWidth":"NaN","YWChartRightAxisAreaWidth":"NaN","LegendPosition":0,"LegendViewType":0,"LegendTableColumnAttributes":[{"TypeId":"1048594","Size":40},{"TypeId":"1048601","Size":45},{"TypeId":"31","Size":100},{"TypeId":"3","Size":250},{"TypeId":"16","Size":70},{"TypeId":"1048627","Size":100},{"TypeId":"1048631","Size":100},{"TypeId":"1048634","Size":100}],"LegendTabItemAttributes":[{"TypeId":"31","Size":100}],"FlipAxes":false,"AxisDisplayNameMode":3,"ReversedAxis":[false,false],"ShowUnits":false,"ShowObjectColor":true,"SortDescending":false,"SortAttributeId":null,"NumericViewValueObjectDisplayOption":1,"ValueColumnWidth":60,"ValueColumnWidthDouble":60,"ParameterGroup":"","ModuleName":"","GroupIsFunction":false,"NumericControlAxisAttributes":[],"NumericControlColumnAttributes":[{"TypeId":"31","Size":100}],"ChartViewValueObjectDisplayOption":1,"SerializationCameraPosition":{"X":1,"Y":1,"Z":-1},"SerializationCameraTarget":{"X":0,"Y":0.5,"Z":0},"IsValueAnnotationRotated":false,"EquidistantAxisPoints":false,"BarThickness":0.6,"WorkingPointMarker":0,"LinearWorkingPointInterpolation":true,"ShowAllIntersectionLines":false,"IsValueAxisIndependent":true,"TickLabelRotationAngle":-90,"IsTickLabelRotationEnabled":false,"IsTickLabelRightAligned":false,"ShowBoundarySurface":true,"ShowBoundarySurfaceGradient":false,"ShowCursorAsCrosshair":false,"XAxisAutoRange":true,"ValueAxisAutoRange":true,"ShowAllValueAxes":false,"DrawAxisBands":false,"CurrentColumnChartType":0,"SerializationCursorCrosshairColor":{"R":0,"G":0,"B":0,"A":255},"AlignBarToZero":true,"DefaultChartViewType":2,"AttributeColumnPositioning":1}}
+OBJECTS_COUNT=1
+OBJECT_1=DEVICE:"NCU":"bLedState":P
+ObjectCount=1
+HiddenDisplayCount=0
+Title=Parameters
+Type=137438953472
+Comment=Parameters
+Number=3
+GUID=WINDOW_319bf10d-e8a1-4c36-8876-dc67ac4b2045
+ScreenDPIinSection=96
+Position=0, 21, 394, 320, 240 ;cmd, x, y, w, h
+Position_dpi96=0, 21, 394, 320, 240 ;cmd, x, y, w, h
+Position_Page01=0, 21, 394, 320, 240 ;cmd, x, y, w, h
+Position_Page01_dpi96=0, 21, 394, 320, 240 ;cmd, x, y, w, h
+FloatingWindow=0
+ShowSignalComments=1
+DisplayMask=1 ; pages 1
+
+[WINDOW_3_OBJECT_1]
+Type=2
+Module=NCU
+Name=bLedState
+Window=3
+Index=0
+Color=0
+ApplyColorToBackground=0
+ColorFunction=0
+ColorFunctionScope=1
+LineTyp=2
+YMinHome=0
+YMaxHome=255
+YMin=0
+YMax=1
+ValueFormat=3
+BitMask=1
+ShowYAxis=1
+Width=10
+LineStyle=1
+MarkerType=1
+SRMainValue=0
+InvalidValueDrawMode=3
+LineWidth=1
+Precision=-2
+Digits=6
+Enabled=1
+StoredFocused=0
+SublMask=0
+MeaSublMask=0
+LockScaling=0
+RightAxis=0
+MapMode=2
+OverlayGridColor=0
+ShadingMode=3
+EditOffset=1
+EditFactor=2
+WAxisLabel=
+XAxisLabel=
+YAxisLabel=
+ShowWorkingPointHistory=0
+AxisCaption=
+Row=0
+Col=0
+YAxis_ID=0
+AxisTemplate=
+GUID=DISPLAY_44337f49-1a46-41b7-bba3-23551920c760
+LegendBackgroundColor=-1
+LegendTextColor=-1
+
 [WINDOWS]
-Count=0
+Count=3
 
 [Y_COMMON_AXIS_LIST]
 Count=0

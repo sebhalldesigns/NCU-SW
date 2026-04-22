@@ -16,6 +16,7 @@
 ***************************************************************/
 
 #include "xcp.h"
+#include <icc.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -30,6 +31,15 @@
 #define XCP_MAX_DAQ_LISTS_PER_SESSION   (4)
 #define XCP_MAX_ODTS_PER_DAQ_LIST       (4)
 #define XCP_MAX_ODT_ENTRIES_PER_ODT     (8)
+#define XCP_CORE_VERBOSE_LOG (0U)
+
+#if XCP_CORE_VERBOSE_LOG
+#define XCP_CORE_LOG(msg) eth_log(msg)
+#define XCP_CORE_LOG_U32(msg, val) eth_log_u32((msg), (val))
+#else
+#define XCP_CORE_LOG(msg) ((void)0)
+#define XCP_CORE_LOG_U32(msg, val) ((void)0)
+#endif
 
 /***************************************************************
 ** MARK: TYPEDEFS
@@ -74,6 +84,16 @@ typedef struct
 
 typedef struct
 {
+    bool active;
+    uint32_t queued_at_us;
+    uint8_t upload_size;
+    uint8_t mta_extension;
+    uint16_t reserved;
+    uint32_t mta;
+} deferred_request_t;
+
+typedef struct
+{
     xcp_session_state_t state;
     xcp_conn_type_t conn_type;
     xcp_conn_info_t conn_info;
@@ -88,6 +108,8 @@ typedef struct
 
     bool block_upload_in_progress; /* unused for now */
     bool block_download_in_progress; /* unused for now */
+
+    deferred_request_t deferred_upload;
 
     xcp_daq_list_t daq_lists[XCP_MAX_DAQ_LISTS_PER_SESSION];
     uint32_t daq_lists_in_use;
@@ -123,7 +145,11 @@ static void pack_generic_response(xcp_frame_t *response); /* generic OK response
 static void pack_start_stop_daq_list_response(xcp_frame_t *response, uint8_t first_pid);
 static void pack_error_response(xcp_frame_t *response, uint8_t error_code);
 
-static void pack_upload_response(xcp_session_t *session, xcp_frame_t *response);
+static bool service_deferred_upload(xcp_session_t *session, uint32_t now_us);
+static bool is_m4_step_active(void);
+static bool is_readable_region(uint32_t address, uint8_t size);
+static bool translate_m4_alias_address(uint32_t address, uint32_t *translated);
+static bool pack_upload_response(const deferred_request_t *request, xcp_frame_t *response);
 
 /***************************************************************
 ** MARK: GLOBAL FUNCTIONS
@@ -132,6 +158,9 @@ static void pack_upload_response(xcp_session_t *session, xcp_frame_t *response);
 void xcp_init()
 {
     session_count = 0;
+
+    RCC->AHB4ENR |= RCC_AHB4ENR_HSEMEN;
+    (void)RCC->AHB4ENR;
 
     for (uint32_t i = 0; i < XCP_CONN_TYPE_MAX; i++)
     {
@@ -191,7 +220,6 @@ void xcp_receive_frame(xcp_conn_type_t conn_type, xcp_conn_info_t *conn_info, xc
             sessions[i].frame_us = sys_micros();
             memcpy(&sessions[i].frame, frame, sizeof(xcp_frame_t));
             sessions[i].new_frame = true;
-            sessions[i].mta = 0;
 
             return;
         }
@@ -267,7 +295,7 @@ void xcp_update()
     {
         if ((now_us - sessions[i].frame_us > XCP_TIMEOUT_US) || (sessions[i].state == XCP_SESSION_DISCONNECTED))
         {
-            eth_log("XCP client timed out or disconnected, closing connection");
+            XCP_CORE_LOG("XCP client timed out or disconnected, closing connection");
             close_connection(&sessions[i]);
 
             for (uint32_t j = i; j < session_count - 1; j++)
@@ -283,6 +311,8 @@ void xcp_update()
 
             process_new_frame(&sessions[i]);
         }
+
+        (void)service_deferred_upload(&sessions[i], now_us);
 
 
         if (sessions[i].state == XCP_SESSION_DAQ_RUNNING)
@@ -320,6 +350,7 @@ static void process_new_frame(xcp_session_t *session)
     static xcp_frame_t response_frame;
 
     bool handled = false;
+    bool send_response = true;
 
     switch (session->state)
     {
@@ -328,7 +359,7 @@ static void process_new_frame(xcp_session_t *session)
             if (session->frame.pid == XCP_COMMAND_CONNECT)
             {
                 session->state = XCP_SESSION_CONNECTED;
-                eth_log("XCP client connected");
+                XCP_CORE_LOG("XCP client connected");
 
                 pack_conn_response(&response_frame);
                 handled = true;
@@ -371,28 +402,71 @@ static void process_new_frame(xcp_session_t *session)
 
                 case XCP_COMMAND_UPLOAD:
                 {
-                    session->upload_size = session->frame.data[0];
+                    if (session->deferred_upload.active)
+                    {
+                        pack_error_response(&response_frame, XCP_ERR_CMD_BUSY);
+                        handled = true;
+                    }
+                    else
+                    {
+                        session->upload_size = session->frame.data[0];
+                        if (session->upload_size == 0U || session->upload_size > (XCP_MAX_FRAME_SIZE - 1U))
+                        {
+                            pack_error_response(&response_frame, XCP_ERR_OUT_OF_RANGE);
+                            handled = true;
+                        }
+                        else
+                        {
+                            session->deferred_upload.active = true;
+                            session->deferred_upload.queued_at_us = sys_micros();
+                            session->deferred_upload.upload_size = session->upload_size;
+                            session->deferred_upload.mta_extension = session->mta_extension;
+                            session->deferred_upload.mta = session->mta;
 
-                    pack_upload_response(session, &response_frame);
-                    handled = true;
+                            handled = true;
+                            send_response = false;
+                        }
+                    }
                 } break;
 
                 case XCP_COMMAND_SHORT_UPLOAD:
                 {
-                    session->upload_size = session->frame.data[0];
+                    if (session->deferred_upload.active)
+                    {
+                        pack_error_response(&response_frame, XCP_ERR_CMD_BUSY);
+                        handled = true;
+                    }
+                    else
+                    {
+                        session->upload_size = session->frame.data[0];
 
-                    /* data[1] reserved */
-                    
-                    session->mta_extension = session->frame.data[2];
+                        /* data[1] reserved */
+                        
+                        session->mta_extension = session->frame.data[2];
 
-                    session->mta = 0;
-                    session->mta |= session->frame.data[3];
-                    session->mta |= ((uint32_t)session->frame.data[4]) << 8;
-                    session->mta |= ((uint32_t)session->frame.data[5]) << 16;
-                    session->mta |= ((uint32_t)session->frame.data[6]) << 24;
+                        session->mta = 0;
+                        session->mta |= session->frame.data[3];
+                        session->mta |= ((uint32_t)session->frame.data[4]) << 8;
+                        session->mta |= ((uint32_t)session->frame.data[5]) << 16;
+                        session->mta |= ((uint32_t)session->frame.data[6]) << 24;
 
-                    pack_upload_response(session, &response_frame);
-                    handled = true;
+                        if (session->upload_size == 0U || session->upload_size > (XCP_MAX_FRAME_SIZE - 1U))
+                        {
+                            pack_error_response(&response_frame, XCP_ERR_OUT_OF_RANGE);
+                            handled = true;
+                        }
+                        else
+                        {
+                            session->deferred_upload.active = true;
+                            session->deferred_upload.queued_at_us = sys_micros();
+                            session->deferred_upload.upload_size = session->upload_size;
+                            session->deferred_upload.mta_extension = session->mta_extension;
+                            session->deferred_upload.mta = session->mta;
+
+                            handled = true;
+                            send_response = false;
+                        }
+                    }
 
                 } break;
 
@@ -400,6 +474,7 @@ static void process_new_frame(xcp_session_t *session)
                 {
                     session->download_size = session->frame.data[0];
 
+#if XCP_CORE_VERBOSE_LOG
                     uint32_t data = 0x0;
                     if (session->download_size <= 4)
                     {
@@ -409,7 +484,8 @@ static void process_new_frame(xcp_session_t *session)
                         }
                     }
 
-                    eth_log_u32("XCP DOWNLOAD", data);
+                    XCP_CORE_LOG_U32("XCP DOWNLOAD", data);
+#endif
 
                     pack_generic_response(&response_frame);
                     handled = true;
@@ -595,7 +671,7 @@ static void process_new_frame(xcp_session_t *session)
                     if (start_stop == 1)
                     {
                         session->state = XCP_SESSION_DAQ_RUNNING;
-                        eth_log("DAQ started");
+                        XCP_CORE_LOG("DAQ started");
                     }
 
                     pack_generic_response(&response_frame);
@@ -643,7 +719,7 @@ static void process_new_frame(xcp_session_t *session)
                     if (start_stop == 1)
                     {
                         session->state = XCP_SESSION_DAQ_RUNNING;
-                        eth_log("DAQ started");
+                        XCP_CORE_LOG("DAQ started");
                     }
 
                     pack_generic_response(&response_frame);
@@ -669,7 +745,8 @@ static void process_new_frame(xcp_session_t *session)
     if (session->frame.pid == XCP_COMMAND_DISCONNECT)
     {
         session->state = XCP_SESSION_DISCONNECTED;
-        eth_log("XCP client requested disconnect");
+        session->deferred_upload.active = false;
+        XCP_CORE_LOG("XCP client requested disconnect");
 
         pack_generic_response(&response_frame);
         handled = true;
@@ -678,14 +755,17 @@ static void process_new_frame(xcp_session_t *session)
     if (!handled)
     {
         /* if we get here, it's an unsupported message so error */
-        eth_log_u32("Invalid XCP PID", session->frame.pid);
-        eth_log_u32("For state", session->state);
+        XCP_CORE_LOG_U32("Invalid XCP PID", session->frame.pid);
+        XCP_CORE_LOG_U32("For state", session->state);
 
         pack_error_response(&response_frame, XCP_ERR_CMD_UNKNOWN); /* Generic error code, expand as needed */
 
     }
 
-    response_handlers[session->conn_type](&session->conn_info, &response_frame);
+    if (send_response)
+    {
+        response_handlers[session->conn_type](&session->conn_info, &response_frame);
+    }
 }
 
 static void close_connection(xcp_session_t *session)
@@ -696,6 +776,116 @@ static void close_connection(xcp_session_t *session)
     }
 
     memset(session, 0, sizeof(*session));
+}
+
+static bool service_deferred_upload(xcp_session_t *session, uint32_t now_us)
+{
+    xcp_frame_t response_frame;
+
+    if ((session == NULL) || !session->deferred_upload.active)
+    {
+        return false;
+    }
+
+    if (is_m4_step_active())
+    {
+        if ((now_us - session->deferred_upload.queued_at_us) < ICC_XCP_UPLOAD_TIMEOUT_US)
+        {
+            return false;
+        }
+
+        pack_error_response(&response_frame, XCP_ERR_CMD_BUSY);
+        response_handlers[session->conn_type](&session->conn_info, &response_frame);
+        session->deferred_upload.active = false;
+        return true;
+    }
+
+    if (!pack_upload_response(&session->deferred_upload, &response_frame))
+    {
+        pack_error_response(&response_frame, XCP_ERR_ACCESS_DENIED);
+    }
+    else
+    {
+        session->mta = session->deferred_upload.mta + session->deferred_upload.upload_size;
+    }
+
+    response_handlers[session->conn_type](&session->conn_info, &response_frame);
+    session->deferred_upload.active = false;
+
+    return true;
+}
+
+static bool is_m4_step_active(void)
+{
+    return (HSEM->R[ICC_M4_ACTIVITY_HSEM_ID] & HSEM_R_LOCK) != 0U;
+}
+
+static bool is_readable_region(uint32_t address, uint8_t size)
+{
+    uint32_t end_address;
+    uint32_t translated_start = address;
+    uint32_t translated_end;
+    uint32_t sram_limit = ICC_M4_SRAM_BUS_BASE + ICC_M4_SRAM_SIZE_BYTES;
+    uint32_t d3_limit = ICC_D3_SRAM_BASE + ICC_D3_SRAM_SIZE_BYTES;
+    uint32_t flash_limit = ICC_M4_FLASH_BASE + ICC_M4_FLASH_SIZE_BYTES;
+
+    if (size == 0U)
+    {
+        return false;
+    }
+
+    end_address = address + ((uint32_t)size - 1U);
+    if (end_address < address)
+    {
+        return false;
+    }
+
+    if (!translate_m4_alias_address(address, &translated_start) ||
+        !translate_m4_alias_address(end_address, &translated_end))
+    {
+        return false;
+    }
+
+    if (translated_end < translated_start)
+    {
+        return false;
+    }
+
+    if (translated_start >= ICC_M4_SRAM_BUS_BASE && translated_end < sram_limit)
+    {
+        return true;
+    }
+
+    if (translated_start >= ICC_D3_SRAM_BASE && translated_end < d3_limit)
+    {
+        return true;
+    }
+
+    if (translated_start >= ICC_M4_FLASH_BASE && translated_end < flash_limit)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+static bool translate_m4_alias_address(uint32_t address, uint32_t *translated)
+{
+    uint32_t alias_limit = ICC_M4_SRAM_ALIAS_BASE + ICC_M4_SRAM_SIZE_BYTES;
+
+    if (translated == NULL)
+    {
+        return false;
+    }
+
+    if (address >= ICC_M4_SRAM_ALIAS_BASE && address < alias_limit)
+    {
+        *translated = address - ICC_M4_SRAM_ALIAS_BASE + ICC_M4_SRAM_BUS_BASE;
+        return true;
+    }
+
+    *translated = address;
+    return true;
 }
 
 static void pack_conn_response(xcp_frame_t *response)
@@ -748,19 +938,23 @@ static void pack_start_stop_daq_list_response(xcp_frame_t *response, uint8_t fir
     response->data[0] = first_pid;
 }
 
-static void pack_upload_response(xcp_session_t *session, xcp_frame_t *response)
+static bool pack_upload_response(const deferred_request_t *request, xcp_frame_t *response)
 {
-    /* check MTA here */
+    uint32_t translated_mta;
 
-    response->length = 1 + session->upload_size;
-    if (response->length > XCP_MAX_FRAME_SIZE)
+    if ((request == NULL) || (response == NULL) ||
+        !is_readable_region(request->mta, request->upload_size) ||
+        !translate_m4_alias_address(request->mta, &translated_mta))
     {
-        response->length = XCP_MAX_FRAME_SIZE;
+        return false;
     }
 
+    response->length = 1U + request->upload_size;
     response->pid = XCP_RESPONSE_OK;
-    for (uint8_t i = 0; i < response->length - 1; i++)
+    for (uint8_t i = 0; i < request->upload_size; i++)
     {
-        response->data[i] = 0xA;
+        response->data[i] = *((volatile uint8_t *)(translated_mta + i));
     }
+
+    return true;
 }

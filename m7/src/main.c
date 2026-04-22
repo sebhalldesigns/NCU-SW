@@ -14,6 +14,15 @@
 #define LOG_PORT 50000U
 #define XCP_MAX_UDP_PACKET_SIZE (XCP_IP_HEADER_SIZE + XCP_MAX_FRAME_SIZE)
 #define HEX_BUF_SIZE ((XCP_MAX_UDP_PACKET_SIZE * 3U) + 1U)
+#define XCP_VERBOSE_LOG (0U)
+
+#if XCP_VERBOSE_LOG
+#define XCP_LOG(msg) eth_log(msg)
+#define XCP_LOG_U32(msg, val) eth_log_u32((msg), (val))
+#else
+#define XCP_LOG(msg) ((void)0)
+#define XCP_LOG_U32(msg, val) ((void)0)
+#endif
 
 volatile uint8_t led_state = 0;
 volatile uint32_t udp_rx_packets = 0U;
@@ -22,17 +31,20 @@ volatile uint32_t tcp_rx_packets = 0U;
 volatile uint32_t tcp_tx_failures = 0U;
 volatile uint32_t ws_rx_packets = 0U;
 volatile uint32_t ws_tx_failures = 0U;
+#if XCP_VERBOSE_LOG
 static const char hex_chars[] = "0123456789ABCDEF";
+#endif
 
 static void udp_echo_callback(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port)
 {
-    eth_log("UDP RX");
+    XCP_LOG("UDP RX");
 
     if ((data == NULL) || (len == 0U))
     {
         return;
     }
 
+#if XCP_VERBOSE_LOG
     char hex_buf[HEX_BUF_SIZE];
     uint16_t copy_len = (len > XCP_MAX_UDP_PACKET_SIZE) ? XCP_MAX_UDP_PACKET_SIZE : len;
     for (uint16_t i = 0; i < copy_len; i++)
@@ -44,12 +56,13 @@ static void udp_echo_callback(const uint8_t *data, uint16_t len, uint32_t src_ip
     }
 
     hex_buf[copy_len * 3] = '\0';
-    eth_log(hex_buf);
+    XCP_LOG(hex_buf);
+#endif
 
     if (eth_udp_send(src_ip, src_port, data, len) != ETH_RES_OK)
     {
         udp_tx_failures++;
-        eth_log("UDP TX failed");
+        XCP_LOG("UDP TX failed");
     }
 }
 
@@ -81,13 +94,14 @@ static void ws_echo_callback(const uint8_t *data, uint16_t len, bool is_text)
 static void tcp_xcp_callback(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port)
 {
     tcp_rx_packets++;
-    eth_log("TCP RX");
+    XCP_LOG("TCP RX");
 
     if ((data == NULL) || (len == 0U))
     {
         return;
     }
 
+#if XCP_VERBOSE_LOG
     char hex_buf[HEX_BUF_SIZE];
     uint16_t copy_len = (len > XCP_MAX_UDP_PACKET_SIZE) ? XCP_MAX_UDP_PACKET_SIZE : len;
     for (uint16_t i = 0; i < copy_len; i++)
@@ -98,14 +112,15 @@ static void tcp_xcp_callback(const uint8_t *data, uint16_t len, uint32_t src_ip,
         hex_buf[i * 3 + 2] = ' ';
     }
     hex_buf[copy_len * 3] = '\0';
-    eth_log(hex_buf);
+    XCP_LOG(hex_buf);
+#endif
 
     if (len <= XCP_MAX_UDP_PACKET_SIZE && len >= (XCP_IP_HEADER_SIZE + 1U))
     {
         uint8_t frame_len = (uint8_t)(data[0] | (data[1] << 8));
         if (frame_len == 0U || frame_len > XCP_MAX_FRAME_SIZE || (uint16_t)frame_len != (len - XCP_IP_HEADER_SIZE))
         {
-            eth_log("TCP RX invalid XCP length");
+            XCP_LOG("TCP RX invalid XCP length");
             return;
         }
 
@@ -133,7 +148,7 @@ static void tcp_xcp_disconnect_callback(uint32_t src_ip, uint16_t src_port)
     conn_info.ip.remote_port = src_port;
     conn_info.ip.counter = 0U;
 
-    eth_log("TCP XCP disconnect");
+    XCP_LOG("TCP XCP disconnect");
     xcp_disconnect_connection(XCP_CONN_TYPE_ETH_TCP, &conn_info);
 }
 
@@ -148,7 +163,7 @@ void task_b(uint32_t time_us)
     if (time_us - last_log_time_us >= 1000000) /* Log every 1 second */
     {
         last_log_time_us = time_us;
-        eth_log_u32("TASK B", time_us);
+        XCP_LOG_U32("TASK B", time_us);
 
         #if 0
         led_state ^= 1;
@@ -184,12 +199,11 @@ void xcp_eth_udp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *respo
 
     if (response_frame->length == 0U || response_frame->length > XCP_MAX_FRAME_SIZE)
     {
-        eth_log("UDP TX invalid XCP length");
+        XCP_LOG("UDP TX invalid XCP length");
         return;
     }
 
     static uint8_t response[XCP_MAX_FRAME_SIZE + XCP_IP_HEADER_SIZE];
-    char hex_buf[HEX_BUF_SIZE];
     
     response[0] = response_frame->length & 0xFF;
     response[1] = (response_frame->length >> 8) & 0xFF;
@@ -204,6 +218,8 @@ void xcp_eth_udp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *respo
         response[5 + i] = response_frame->data[i];
     }
 
+#if XCP_VERBOSE_LOG
+    char hex_buf[HEX_BUF_SIZE];
     for (uint16_t i = 0; i < response_frame->length + XCP_IP_HEADER_SIZE; i++)
     {
         uint8_t byte = response[i];
@@ -213,8 +229,9 @@ void xcp_eth_udp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *respo
     }
 
     hex_buf[response_frame->length * 3 + XCP_IP_HEADER_SIZE * 3] = '\0';
-    eth_log("UDP TX");
-    eth_log(hex_buf);
+    XCP_LOG("UDP TX");
+    XCP_LOG(hex_buf);
+#endif
 
 
 
@@ -231,12 +248,11 @@ void xcp_eth_tcp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *respo
 
     if (response_frame->length == 0U || response_frame->length > XCP_MAX_FRAME_SIZE)
     {
-        eth_log("TCP TX invalid XCP length");
+        XCP_LOG("TCP TX invalid XCP length");
         return;
     }
 
     static uint8_t response[XCP_MAX_FRAME_SIZE + XCP_IP_HEADER_SIZE];
-    char hex_buf[HEX_BUF_SIZE];
 
     response[0] = response_frame->length & 0xFF;
     response[1] = (response_frame->length >> 8) & 0xFF;
@@ -251,6 +267,8 @@ void xcp_eth_tcp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *respo
         response[5 + i] = response_frame->data[i];
     }
 
+#if XCP_VERBOSE_LOG
+    char hex_buf[HEX_BUF_SIZE];
     for (uint16_t i = 0; i < response_frame->length + XCP_IP_HEADER_SIZE; i++)
     {
         uint8_t byte = response[i];
@@ -260,13 +278,14 @@ void xcp_eth_tcp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *respo
     }
 
     hex_buf[response_frame->length * 3 + XCP_IP_HEADER_SIZE * 3] = '\0';
-    eth_log("TCP TX");
-    eth_log(hex_buf);
+    XCP_LOG("TCP TX");
+    XCP_LOG(hex_buf);
+#endif
 
     if (eth_tcp_send(response, (uint16_t)(response_frame->length + XCP_IP_HEADER_SIZE)) != ETH_RES_OK)
     {
         tcp_tx_failures++;
-        eth_log("TCP TX failed");
+        XCP_LOG("TCP TX failed");
     }
 }
 
@@ -293,17 +312,19 @@ int main(void)
 
     eth_init();
 
+#if XCP_VERBOSE_LOG
     ip4_addr_t log_ip4;
     IP4_ADDR(&log_ip4, 192, 168, 1, 51);
     (void)eth_log_init(log_ip4.addr, LOG_PORT);
+#endif
 
     eth_udp_bind(UDP_PORT, udp_echo_callback);
     eth_tcp_init(XCP_PORT, tcp_xcp_callback, tcp_xcp_disconnect_callback);
     eth_ws_init(WS_PORT, ws_echo_callback);
 
-    eth_log("NCU Initialization Complete");
-    eth_log_u32("XCP port", XCP_PORT);
-    eth_log("M7 CAN disabled; CAN is handled by M4");
+    XCP_LOG("NCU Initialization Complete");
+    XCP_LOG_U32("XCP port", XCP_PORT);
+    XCP_LOG("M7 CAN disabled; CAN is handled by M4");
 
     task_init(500, 5000); /* Task A at 500us, Task B at 1s */
     

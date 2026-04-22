@@ -5,7 +5,7 @@
 #ifdef MATLAB_MEX_FILE
 /* Simulink run and check */
 
-void can_set_bitrate(uint8_t bus, can_bitrate_t bitrate)
+void can_set_bitrate(uint8_t bus, uint8_t bitrate)
 {
     (void)bus;
     (void)bitrate;
@@ -78,6 +78,7 @@ CAN_MESSAGE_BUS can2_receive(uint8_t *status, uint32_t *rx_count)
 #define FDCAN_NOMINAL_SJW             2U
 #define FDCAN_TIMEOUT_LOOPS           1000000U
 #define FDCAN_TX_BUFFER_INDEX         0U
+#define FDCAN_INIT_RETRY_INTERVAL     1000U
 
 #define FDCAN_MSG_RAM_WORDS_PER_RX    4U
 #define FDCAN_MSG_RAM_WORDS_PER_TX    4U
@@ -86,7 +87,6 @@ CAN_MESSAGE_BUS can2_receive(uint8_t *status, uint32_t *rx_count)
 #define FDCAN2_RX_WORD_OFFSET         (FDCAN1_TX_WORD_OFFSET + FDCAN_MSG_RAM_WORDS_PER_TX)
 #define FDCAN2_TX_WORD_OFFSET         (FDCAN2_RX_WORD_OFFSET + FDCAN_MSG_RAM_WORDS_PER_RX)
 
-#define CAN_ELEMENT_ESI               (1UL << 31U)
 #define CAN_ELEMENT_XTD               (1UL << 30U)
 #define CAN_ELEMENT_RTR               (1UL << 29U)
 #define CAN_ELEMENT_STD_ID_POS        18U
@@ -98,38 +98,41 @@ typedef struct {
     FDCAN_GlobalTypeDef *instance;
     uint32_t rx_word_offset;
     uint32_t tx_word_offset;
-    can_bitrate_t bitrate;
+    uint8_t bitrate;
     bool initialized;
+    uint32_t init_retry_count;
     uint32_t rx_count;
 } can_node_t;
 
 static can_node_t can_nodes[2] = {
-    { FDCAN1, FDCAN1_RX_WORD_OFFSET, FDCAN1_TX_WORD_OFFSET, CAN1_DEFAULT_BITRATE, false, 0U },
-    { FDCAN2, FDCAN2_RX_WORD_OFFSET, FDCAN2_TX_WORD_OFFSET, CAN2_DEFAULT_BITRATE, false, 0U }
+    { FDCAN1, FDCAN1_RX_WORD_OFFSET, FDCAN1_TX_WORD_OFFSET, CAN1_DEFAULT_BITRATE, false, 0U, 0U },
+    { FDCAN2, FDCAN2_RX_WORD_OFFSET, FDCAN2_TX_WORD_OFFSET, CAN2_DEFAULT_BITRATE, false, 0U, 0U }
 };
 
 static bool can_common_ready = false;
 
 static can_node_t *can_get_node(uint8_t bus);
-static bool can_is_valid_bitrate(can_bitrate_t bitrate);
-static uint32_t can_bitrate_to_brp(can_bitrate_t bitrate);
+static bool can_is_valid_bitrate(uint8_t bitrate);
+static uint32_t can_bitrate_to_brp(uint8_t bitrate);
 static uint8_t can_length_to_dlc(uint8_t length);
 static uint8_t can_dlc_to_length(uint8_t dlc);
 static CAN_MESSAGE_BUS can_default_message(void);
-static void can_enable_kernel_clock(void);
+static bool can_configure_pll2_for_fdcan(void);
+static bool can_enable_kernel_clock(void);
 static void can_configure_gpio(void);
 static bool can_wait_for_bits(volatile uint32_t *reg, uint32_t mask, uint32_t expected);
 static void can_clear_node_message_ram(const can_node_t *node);
 static bool can_init_node(can_node_t *node);
 static bool can_ensure_ready(can_node_t *node);
 
-void can_set_bitrate(uint8_t bus, can_bitrate_t bitrate)
+void can_set_bitrate(uint8_t bus, uint8_t bitrate)
 {
     can_node_t *node = can_get_node(bus);
     if ((node == NULL) || !can_is_valid_bitrate(bitrate)) return;
 
     node->bitrate = bitrate;
     node->initialized = false;
+    node->init_retry_count = 0U;
 }
 
 void can_transmit(uint8_t bus, const CAN_MESSAGE_BUS *message)
@@ -161,10 +164,6 @@ void can_transmit(uint8_t bus, const CAN_MESSAGE_BUS *message)
 
     if (message->Remote != 0U) {
         r0 |= CAN_ELEMENT_RTR;
-    }
-
-    if (message->ESI != 0U) {
-        r0 |= CAN_ELEMENT_ESI;
     }
 
     r1 = ((uint32_t)dlc << CAN_ELEMENT_DLC_POS);
@@ -242,8 +241,6 @@ CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count)
 
     message.Extended = ((r0 & CAN_ELEMENT_XTD) != 0U) ? 1U : 0U;
     message.Remote = ((r0 & CAN_ELEMENT_RTR) != 0U) ? 1U : 0U;
-    message.ESI = ((r0 & CAN_ELEMENT_ESI) != 0U) ? 1U : 0U;
-    message.BRS = 0U;
     message.Error = 0U;
     message.Timestamp = (double)(r1 & CAN_ELEMENT_TIMESTAMP_MASK);
 
@@ -319,9 +316,9 @@ static can_node_t *can_get_node(uint8_t bus)
     }
 }
 
-static bool can_is_valid_bitrate(can_bitrate_t bitrate)
+static bool can_is_valid_bitrate(uint8_t bitrate)
 {
-    switch (bitrate) {
+    switch ((can_bitrate_t)bitrate) {
         case CAN_BITRATE_125K:
         case CAN_BITRATE_250K:
         case CAN_BITRATE_500K:
@@ -332,13 +329,20 @@ static bool can_is_valid_bitrate(can_bitrate_t bitrate)
     }
 }
 
-static uint32_t can_bitrate_to_brp(can_bitrate_t bitrate)
+static uint32_t can_bitrate_to_brp(uint8_t bitrate)
 {
-    if (!can_is_valid_bitrate(bitrate)) {
-        return 0U;
+    switch ((can_bitrate_t)bitrate) {
+        case CAN_BITRATE_125K:
+            return (FDCAN_CLOCK_HZ / (125000U * FDCAN_TIME_QUANTA_PER_BIT));
+        case CAN_BITRATE_250K:
+            return (FDCAN_CLOCK_HZ / (250000U * FDCAN_TIME_QUANTA_PER_BIT));
+        case CAN_BITRATE_500K:
+            return (FDCAN_CLOCK_HZ / (500000U * FDCAN_TIME_QUANTA_PER_BIT));
+        case CAN_BITRATE_1M:
+            return (FDCAN_CLOCK_HZ / (1000000U * FDCAN_TIME_QUANTA_PER_BIT));
+        default:
+            return 0U;
     }
-
-    return (FDCAN_CLOCK_HZ / ((uint32_t)bitrate * FDCAN_TIME_QUANTA_PER_BIT));
 }
 
 static uint8_t can_length_to_dlc(uint8_t length)
@@ -370,12 +374,39 @@ static CAN_MESSAGE_BUS can_default_message(void)
     return message;
 }
 
-static void can_enable_kernel_clock(void)
+static bool can_configure_pll2_for_fdcan(void)
 {
-    /* sys_init() configures PLL2Q at 80 MHz; select it as FDCAN kernel clock. */
+    if ((RCC->CR & RCC_CR_PLL2RDY) != 0U) {
+        return true;
+    }
+
+    /* Configure PLL2Q = 80 MHz from HSI (64 MHz): 64/4*20/4 = 80 MHz. */
+    RCC->PLLCKSELR = (RCC->PLLCKSELR & ~RCC_PLLCKSELR_DIVM2)
+                   | (4U << RCC_PLLCKSELR_DIVM2_Pos);
+    RCC->PLLCFGR = (RCC->PLLCFGR
+                & ~(RCC_PLLCFGR_PLL2RGE | RCC_PLLCFGR_PLL2VCOSEL | RCC_PLLCFGR_PLL2FRACEN))
+                | RCC_PLLCFGR_PLL2RGE_3
+                | RCC_PLLCFGR_DIVQ2EN;
+    RCC->PLL2DIVR = ((20U - 1U) << RCC_PLL2DIVR_N2_Pos)
+                  | ((2U  - 1U) << RCC_PLL2DIVR_P2_Pos)
+                  | ((4U  - 1U) << RCC_PLL2DIVR_Q2_Pos)
+                  | ((2U  - 1U) << RCC_PLL2DIVR_R2_Pos);
+
+    RCC->CR |= RCC_CR_PLL2ON;
+    return can_wait_for_bits(&RCC->CR, RCC_CR_PLL2RDY, RCC_CR_PLL2RDY);
+}
+
+static bool can_enable_kernel_clock(void)
+{
+    if (!can_configure_pll2_for_fdcan()) {
+        return false;
+    }
+
+    /* Select PLL2Q as FDCAN kernel clock and enable peripheral clock. */
     RCC->D2CCIP1R = (RCC->D2CCIP1R & ~RCC_D2CCIP1R_FDCANSEL) | RCC_D2CCIP1R_FDCANSEL_1;
     RCC->APB1HENR |= RCC_APB1HENR_FDCANEN;
     (void)RCC->APB1HENR;
+    return true;
 }
 
 static void can_configure_gpio(void)
@@ -478,17 +509,26 @@ static bool can_init_node(can_node_t *node)
 static bool can_ensure_ready(can_node_t *node)
 {
     if (!can_common_ready) {
-        can_enable_kernel_clock();
+        if (!can_enable_kernel_clock()) {
+            return false;
+        }
         can_configure_gpio();
         can_common_ready = true;
     }
 
     if (node->initialized) return true;
+    if (node->init_retry_count > 0U) {
+        node->init_retry_count--;
+        return false;
+    }
 
     can_clear_node_message_ram(node);
     node->initialized = can_init_node(node);
     if (node->initialized) {
         node->rx_count = 0U;
+        node->init_retry_count = 0U;
+    } else {
+        node->init_retry_count = FDCAN_INIT_RETRY_INTERVAL;
     }
 
     return node->initialized;

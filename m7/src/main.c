@@ -1,5 +1,4 @@
 
-#include "can/can.h"
 #include "xcp/xcp.h"
 #include <stdint.h>
 #include <sys/sys.h>
@@ -23,8 +22,6 @@ volatile uint32_t tcp_rx_packets = 0U;
 volatile uint32_t tcp_tx_failures = 0U;
 volatile uint32_t ws_rx_packets = 0U;
 volatile uint32_t ws_tx_failures = 0U;
-static bool can_init_ok = false;
-
 static const char hex_chars[] = "0123456789ABCDEF";
 
 static void udp_echo_callback(const uint8_t *data, uint16_t len, uint32_t src_ip, uint16_t src_port)
@@ -175,7 +172,6 @@ void task_c(uint32_t time_us)
         eth_packet_ready = 0;
     }
 
-    can_poll(time_us);
     eth_poll();
 }
 
@@ -277,7 +273,6 @@ void xcp_eth_tcp_response_handler(xcp_conn_info_t *conn_info, xcp_frame_t *respo
 int main(void)
 {
     sys_init();
-    can_init_ok = can_init();
     xcp_init();
     xcp_add_response_handler(XCP_CONN_TYPE_ETH_TCP, xcp_eth_tcp_response_handler);
 
@@ -308,7 +303,7 @@ int main(void)
 
     eth_log("NCU Initialization Complete");
     eth_log_u32("XCP port", XCP_PORT);
-    eth_log(can_init_ok ? "FDCAN1/FDCAN2 test transmit enabled at 500 kbit/s" : "FDCAN init failed");
+    eth_log("M7 CAN disabled; CAN is handled by M4");
 
     task_init(500, 5000); /* Task A at 500us, Task B at 1s */
     

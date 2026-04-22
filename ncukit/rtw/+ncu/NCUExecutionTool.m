@@ -122,31 +122,35 @@ classdef NCUExecutionTool < target.ExecutionTool
 
         function [applicationStatus, errFlag] = getApplicationStatus(this)
             errFlag = false;
-            applicationStatus = target.ApplicationStatus.Unknown;
+            applicationStatus = target.ApplicationStatus.Stopped;
 
             [host, port, ok] = this.i_get_connection_details();
             if ~ok
-                errFlag = true;
-                this.StandardError = this.i_append_message(this.StandardError, ...
-                    "Connection details are unavailable.");
+                this.i_append_output("Application status probe skipped: connection details are unavailable.");
                 return;
             end
 
-            [isRunning, usedVnt, message] = this.i_probe_xcp_server(host, port);
-            if isRunning
-                applicationStatus = target.ApplicationStatus.Running;
-                if strlength(message) > 0
-                    this.i_append_output(message);
+            try
+                [isRunning, usedVnt, message] = this.i_probe_xcp_server(host, port);
+                if isRunning
+                    applicationStatus = target.ApplicationStatus.Running;
+                    if strlength(message) > 0
+                        this.i_append_output(message);
+                    end
+                    return;
                 end
-                return;
-            end
 
-            applicationStatus = target.ApplicationStatus.Stopped;
-            if strlength(message) > 0
-                this.StandardError = this.i_append_message(this.StandardError, message);
-            elseif usedVnt
+                applicationStatus = target.ApplicationStatus.Stopped;
+                if strlength(message) > 0
+                    this.StandardError = this.i_append_message(this.StandardError, message);
+                elseif usedVnt
+                    this.StandardError = this.i_append_message(this.StandardError, ...
+                        "Vehicle Network Toolbox XCP probe failed.");
+                end
+            catch ME
+                applicationStatus = target.ApplicationStatus.Stopped;
                 this.StandardError = this.i_append_message(this.StandardError, ...
-                    "Vehicle Network Toolbox XCP probe failed.");
+                    "Application status probe failed: " + string(ME.message));
             end
         end
 

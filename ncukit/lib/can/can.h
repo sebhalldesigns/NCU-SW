@@ -18,10 +18,10 @@ typedef enum {
 } can_bus_t;
 
 typedef enum {
-    CAN_BITRATE_125K = 125000U,
-    CAN_BITRATE_250K = 250000U,
-    CAN_BITRATE_500K = 500000U,
-    CAN_BITRATE_1M   = 1000000U
+    CAN_BITRATE_125K = 0U,
+    CAN_BITRATE_250K = 1U,
+    CAN_BITRATE_500K = 2U,
+    CAN_BITRATE_1M   = 3U
 } can_bitrate_t;
 
 typedef enum {
@@ -31,18 +31,16 @@ typedef enum {
     CAN_RX_STATUS_NOT_READY   = 3U
 } can_rx_status_t;
 
-#ifndef NCUKIT_CAN_MESSAGE_BUS_TYPEDEF
-#define NCUKIT_CAN_MESSAGE_BUS_TYPEDEF
+#ifndef DEFINED_TYPEDEF_FOR_CAN_MESSAGE_BUS_
+#define DEFINED_TYPEDEF_FOR_CAN_MESSAGE_BUS_
 typedef struct {
-    uint32_t ID;
-    uint8_t Extended;
-    uint8_t Length;
-    uint8_t Remote;
-    uint8_t Error;
-    uint8_t BRS;
-    uint8_t ESI;
-    double Timestamp;
-    uint8_t Data[8];
+  uint8_t Extended;
+  uint8_t Length;
+  uint8_t Remote;
+  uint8_t Error;
+  uint32_t ID;
+  double Timestamp;
+  uint8_t Data[8];
 } CAN_MESSAGE_BUS;
 #endif
 
@@ -54,7 +52,7 @@ typedef struct {
 #define CAN2_DEFAULT_BITRATE CAN_BITRATE_500K
 #endif
 
-void can_set_bitrate(uint8_t bus, can_bitrate_t bitrate);
+void can_set_bitrate(uint8_t bus, uint8_t bitrate);
 
 void can_transmit(uint8_t bus, const CAN_MESSAGE_BUS *message);
 CAN_MESSAGE_BUS can_receive(uint8_t bus, uint8_t *status, uint32_t *rx_count);

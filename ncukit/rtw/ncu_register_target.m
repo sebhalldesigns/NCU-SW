@@ -13,14 +13,14 @@ function addedObjects = ncu_register_target(varargin)
     addParameter(p, "Force", false, @(x)islogical(x) && isscalar(x));
     addParameter(p, "UserInstall", true, @(x)islogical(x) && isscalar(x));
     addParameter(p, "SuppressOutput", true, @(x)islogical(x) && isscalar(x));
-    addParameter(p, "IPAddress", "192.168.1.50", @i_is_text_scalar);
-    addParameter(p, "Port", "5005", @i_is_valid_port);
-    addParameter(p, "RegisterExternalMode", true, @(x)islogical(x) && isscalar(x));
+    %addParameter(p, "IPAddress", "192.168.1.50", @i_is_text_scalar);
+    %addParameter(p, "Port", "5005", @i_is_valid_port);
+    addParameter(p, "RegisterExternalMode", false, @(x)islogical(x) && isscalar(x));
     parse(p, varargin{:});
     opts = p.Results;
 
-    opts.IPAddress = string(opts.IPAddress);
-    opts.Port = string(i_port_as_number(opts.Port));
+    %opts.IPAddress = string(opts.IPAddress);
+    %opts.Port = string(i_port_as_number(opts.Port));
 
     processorManufacturer = "NCU";
     processorName = "ARM Compatible->ARM Cortex-M";
@@ -97,6 +97,9 @@ function addedObjects = ncu_register_target(varargin)
 
     if i_board_external_mode_needs_refresh(existingBoard, existingExternalMode, opts.RegisterExternalMode)
         existingBoard.CommunicationProtocolStacks = existingExternalMode;
+        target.update(existingBoard);
+    elseif i_board_external_mode_needs_clear(existingBoard, opts.RegisterExternalMode, opts.Force)
+        existingBoard.CommunicationProtocolStacks = target.ExternalMode.empty;
         target.update(existingBoard);
     end
 
@@ -226,6 +229,21 @@ function tf = i_board_external_mode_needs_refresh(board, externalMode, registerE
         tf = ~strcmp(string(extMode.Name), string(externalMode.Name));
     catch
         tf = true;
+    end
+end
+
+function tf = i_board_external_mode_needs_clear(board, registerExternalMode, forceUpdate)
+% Clear stale board external mode stack when registration is disabled.
+    if isempty(board) || registerExternalMode || ~forceUpdate
+        tf = false;
+        return;
+    end
+
+    tf = false;
+    try
+        tf = ~isempty(board.CommunicationProtocolStacks);
+    catch
+        tf = false;
     end
 end
 

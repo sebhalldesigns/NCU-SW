@@ -94,24 +94,6 @@ bool sys_init()
     RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_PLL1;
     while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL1);
 
-    /* ===================== PLL2 FOR FDCAN ===================== */
-    /* HSI /4 * 20 /4 = 80MHz on PLL2Q for deterministic 500k CAN timing. */
-    RCC->PLLCKSELR = (RCC->PLLCKSELR & ~RCC_PLLCKSELR_DIVM2)
-                | (4U << RCC_PLLCKSELR_DIVM2_Pos);
-
-    RCC->PLLCFGR = (RCC->PLLCFGR
-                & ~(RCC_PLLCFGR_PLL2RGE | RCC_PLLCFGR_PLL2VCOSEL | RCC_PLLCFGR_PLL2FRACEN))
-                | RCC_PLLCFGR_PLL2RGE_3
-                | RCC_PLLCFGR_DIVQ2EN;
-
-    RCC->PLL2DIVR = ((20U - 1U) << RCC_PLL2DIVR_N2_Pos)
-                | ((2U  - 1U) << RCC_PLL2DIVR_P2_Pos)
-                | ((4U  - 1U) << RCC_PLL2DIVR_Q2_Pos)
-                | ((2U  - 1U) << RCC_PLL2DIVR_R2_Pos);
-
-    RCC->CR |= RCC_CR_PLL2ON;
-    while (!(RCC->CR & RCC_CR_PLL2RDY));
-
     /* ===================== ETHERNET CLOCKS ===================== */
     /* Select RMII mode - must be done before enabling ETH clock */
     SYSCFG->PMCR = (SYSCFG->PMCR & ~SYSCFG_PMCR_EPIS_SEL) | SYSCFG_PMCR_EPIS_SEL_2;

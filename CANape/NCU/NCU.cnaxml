@@ -71,7 +71,7 @@
           <property name="SerializableSelectedTabPageIndex">-1</property>
           <property name="AllowDrag">false</property>
           <property name="ItemHeight">150</property>
-          <property name="ItemWidth">294</property>
+          <property name="ItemWidth">409</property>
           <property name="SerializableDockSituation" iskey="true" value="0" />
           <property name="SerializationInfo" isnull="true" iskey="true">
             <property name="IsUserDefined">true</property>
@@ -100,7 +100,7 @@
           <property name="Orientation">Vertical</property>
           <property name="SerializableSelectedTabPageIndex">-1</property>
           <property name="AllowDrag">false</property>
-          <property name="ItemWidth">1.01596*</property>
+          <property name="ItemWidth">0.96417*</property>
           <property name="SerializableDockSituation" iskey="true" value="0" />
           <property name="SerializationInfo" isnull="true" iskey="true">
             <property name="IsUserDefined">true</property>
@@ -251,7 +251,7 @@
       <property name="ManualClosedPanelsBarVisibility">false</property>
       <property name="RedrawContentWhenResizing">false</property>
       <property name="ShowFloatWindowsInTaskbar">false</property>
-      <property name="RestoreLayoutOptions.FloatPanelsRestoreOffset" OwnerType="DevExpress.Xpf.Docking.RestoreLayoutOptions" DependencyPropertyType="System.Windows.Point">1,147</property>
+      <property name="RestoreLayoutOptions.FloatPanelsRestoreOffset" OwnerType="DevExpress.Xpf.Docking.RestoreLayoutOptions" DependencyPropertyType="System.Windows.Point">2561,147</property>
     </property>
   </XtraSerializer>
 </Root>

@@ -87,9 +87,11 @@ int main(void)
         wait++;
     }
 
-    // TIM3 setup 
+    /* TIM3 setup  
+    ** Timer clock is 1MHz with PSC=199, so ARR=999 gives a 1ms period (1kHz frequency)
+    */
     TIM3->PSC  = 199;
-    TIM3->ARR  = 999;   
+    TIM3->ARR  = 999;  
     TIM3->DIER |= TIM_DIER_UIE;
 
     NVIC_SetPriority(TIM3_IRQn, 1);

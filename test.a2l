@@ -1151,7 +1151,7 @@ ASAP2_VERSION 1 71
     /* Name                   */      N_byte1
     /* Long Identifier        */      ""
     /* Type                   */      VALUE
-    /* ECU Address            */      0x1000003B
+    /* ECU Address            */      0x1000003F
     /* Record Layout          */      Record_UBYTE
     /* Maximum Difference     */      0
     /* Conversion Method      */      app_CM_uint8
@@ -1163,7 +1163,7 @@ ASAP2_VERSION 1 71
     /* Name                   */      N_byte2
     /* Long Identifier        */      ""
     /* Type                   */      VALUE
-    /* ECU Address            */      0x1000003A
+    /* ECU Address            */      0x1000003E
     /* Record Layout          */      Record_UBYTE
     /* Maximum Difference     */      0
     /* Conversion Method      */      app_CM_uint8
@@ -1175,7 +1175,7 @@ ASAP2_VERSION 1 71
     /* Name                   */      N_byte3
     /* Long Identifier        */      ""
     /* Type                   */      VALUE
-    /* ECU Address            */      0x10000039
+    /* ECU Address            */      0x1000003D
     /* Record Layout          */      Record_UBYTE
     /* Maximum Difference     */      0
     /* Conversion Method      */      app_CM_uint8
@@ -1187,6 +1187,54 @@ ASAP2_VERSION 1 71
     /* Name                   */      N_byte4
     /* Long Identifier        */      ""
     /* Type                   */      VALUE
+    /* ECU Address            */      0x1000003C
+    /* Record Layout          */      Record_UBYTE
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_uint8
+    /* Lower Limit            */      0
+    /* Upper Limit            */      255
+  /end CHARACTERISTIC 
+
+  /begin CHARACTERISTIC 
+    /* Name                   */      N_byte5
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
+    /* ECU Address            */      0x1000003B
+    /* Record Layout          */      Record_UBYTE
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_uint8
+    /* Lower Limit            */      0
+    /* Upper Limit            */      255
+  /end CHARACTERISTIC 
+
+  /begin CHARACTERISTIC 
+    /* Name                   */      N_byte6
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
+    /* ECU Address            */      0x1000003A
+    /* Record Layout          */      Record_UBYTE
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_uint8
+    /* Lower Limit            */      0
+    /* Upper Limit            */      255
+  /end CHARACTERISTIC 
+
+  /begin CHARACTERISTIC 
+    /* Name                   */      N_byte7
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
+    /* ECU Address            */      0x10000039
+    /* Record Layout          */      Record_UBYTE
+    /* Maximum Difference     */      0
+    /* Conversion Method      */      app_CM_uint8
+    /* Lower Limit            */      0
+    /* Upper Limit            */      255
+  /end CHARACTERISTIC 
+
+  /begin CHARACTERISTIC 
+    /* Name                   */      N_byte8
+    /* Long Identifier        */      ""
+    /* Type                   */      VALUE
     /* ECU Address            */      0x10000038
     /* Record Layout          */      Record_UBYTE
     /* Maximum Difference     */      0
@@ -1194,6 +1242,54 @@ ASAP2_VERSION 1 71
     /* Lower Limit            */      0
     /* Upper Limit            */      255
   /end CHARACTERISTIC 
+
+  /begin MEASUREMENT 
+    /* Name                   */      N_CAN1
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x10000263
+  /end MEASUREMENT 
+
+  /begin MEASUREMENT 
+    /* Name                   */      N_CAN2
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x10000262
+  /end MEASUREMENT 
+
+  /begin MEASUREMENT 
+    /* Name                   */      N_CAN3
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x10000261
+  /end MEASUREMENT 
+
+  /begin MEASUREMENT 
+    /* Name                   */      N_CAN4
+    /* Long identifier        */      ""
+    /* Data type              */      UBYTE
+    /* Conversion method      */      app_CM_uint8
+    /* Resolution (Not used)  */      0      
+    /* Accuracy (Not used)    */      0      
+    /* Lower limit            */      0
+    /* Upper limit            */      255
+    ECU_ADDRESS                       0x10000260
+  /end MEASUREMENT 
 
   /begin MEASUREMENT 
     /* Name                   */      V_AIN0_mV
@@ -1204,7 +1300,7 @@ ASAP2_VERSION 1 71
     /* Accuracy (Not used)    */      0      
     /* Lower limit            */      0
     /* Upper limit            */      65535
-    ECU_ADDRESS                       0x10000266
+    ECU_ADDRESS                       0x1000026A
   /end MEASUREMENT 
 
   /begin MEASUREMENT 
@@ -1216,7 +1312,7 @@ ASAP2_VERSION 1 71
     /* Accuracy (Not used)    */      0      
     /* Lower limit            */      0
     /* Upper limit            */      65535
-    ECU_ADDRESS                       0x10000264
+    ECU_ADDRESS                       0x10000268
   /end MEASUREMENT 
 
   /begin MEASUREMENT 
@@ -1228,7 +1324,7 @@ ASAP2_VERSION 1 71
     /* Accuracy (Not used)    */      0      
     /* Lower limit            */      0
     /* Upper limit            */      65535
-    ECU_ADDRESS                       0x10000262
+    ECU_ADDRESS                       0x10000266
   /end MEASUREMENT 
 
   /begin MEASUREMENT 
@@ -1240,7 +1336,7 @@ ASAP2_VERSION 1 71
     /* Accuracy (Not used)    */      0      
     /* Lower limit            */      0
     /* Upper limit            */      65535
-    ECU_ADDRESS                       0x10000260
+    ECU_ADDRESS                       0x10000264
   /end MEASUREMENT 
 
   /begin MEASUREMENT 
@@ -1584,8 +1680,16 @@ ASAP2_VERSION 1 71
       N_byte2
       N_byte3
       N_byte4
+      N_byte5
+      N_byte6
+      N_byte7
+      N_byte8
     /end REF_CHARACTERISTIC
     /begin REF_MEASUREMENT
+      N_CAN1
+      N_CAN2
+      N_CAN3
+      N_CAN4
       app_B.CANUnpack_o1
       app_B.CANUnpack_o2
       app_DW.CANPack_ModeSignalID
@@ -1655,8 +1759,6 @@ ASAP2_VERSION 1 71
       app_B.CCaller_o1.Data
     /end REF_MEASUREMENT
   /end GROUP
-
-    
 
   /end MODULE
 
